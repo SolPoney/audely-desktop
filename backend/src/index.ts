@@ -5,6 +5,7 @@ import pool from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import exerciceRoutes from './routes/exerciceRoutes.js';
 
+
 import { verifyToken } from './middlewares/authMiddleware.js';
 
 const app = express();
