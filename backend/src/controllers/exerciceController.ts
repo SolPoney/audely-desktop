@@ -33,3 +33,16 @@ export const getExerciceById = async (req: Request, res: Response) => {
   }
 };
 
+export const getExercicesByCategorie = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT * FROM Exercices WHERE categorie_id = ? ORDER BY FIELD(niveau, "facile", "moyen", "difficile"), id',
+      [req.params.id]
+    );
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
