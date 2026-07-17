@@ -1,6 +1,6 @@
 # Audely — Application de rééducation auditive
 
-Audely est une application web de rééducation auditive destinée aux personnes malentendantes ou implantées cochléaires. Elle propose des exercices progressifs pour réapprendre à distinguer, reconnaître et comprendre les sons du quotidien — en autonomie, sans avoir besoin d'un orthophoniste.
+Audely est une application web de rééducation auditive destinée aux personnes malentendantes ou implantées cochléaires. Elle propose des exercices progressifs pour réapprendre à distinguer, reconnaître et comprendre les sons du quotidien — en complément des séances d'orthophonie, pour s'entraîner entre les rendez-vous et progresser plus rapidement.
 
 ---
 
@@ -126,8 +126,3 @@ audely-desktop/
 └── screenshots/
 ```
 
----
-
-## Projet de fin de formation
-
-Application développée dans le cadre d'une formation développement web/mobile (5 mois), inspirée du programme de rééducation cochléaire adulte.
