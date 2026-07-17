@@ -651,7 +651,7 @@ body {
    ============================ */
 .excat-page {
   height: 100dvh;
-  background: #F0FDFA;
+  background: var(--color-bg);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -789,7 +789,7 @@ body {
    ============================ */
 .ep-page {
   height: 100dvh;
-  background: #F0FDFA;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1396,7 +1396,7 @@ body {
 /* Écran résultats */
 .ep-result {
   height: 100dvh;
-  background: white;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1409,7 +1409,7 @@ body {
 .ep-result-score {
   font-size: 1.6rem;
   font-weight: 800;
-  color: #111;
+  color: var(--color-text);
   text-align: center;
   line-height: 1.3;
   letter-spacing: -0.02em;
@@ -1599,7 +1599,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #F0FDFA;
+  background: var(--color-bg);
   position: relative;
   overflow: hidden;
 }
@@ -1772,7 +1772,7 @@ body {
 /* Page principale */
 .det-page {
   height: 100dvh;
-  background: #ffffff;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1854,7 +1854,7 @@ body {
   padding: 1.5rem 2.5rem;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #111;
+  color: var(--color-text);
   line-height: 1.55;
 }
 
@@ -1946,7 +1946,7 @@ body {
 /* ── Écran résultats ── */
 .det-result {
   height: 100dvh;
-  background: white;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   padding: 3rem 1.5rem 2rem;
@@ -1958,7 +1958,7 @@ body {
 .det-result-score {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #111;
+  color: var(--color-text);
   text-align: center;
   line-height: 1.3;
   letter-spacing: -0.02em;
@@ -2025,7 +2025,7 @@ body {
    ============================ */
 .rythme-page {
   height: 100%;
-  background: #F0FDFA;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -2743,10 +2743,11 @@ body {
   padding: 0;
   max-width: 100%;
   gap: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  min-height: 0;  /* crucial en flexbox : empêche le dépassement */
+  min-height: 0;
 }
 
 /* ── Hero ── */
@@ -2904,13 +2905,11 @@ body {
 /* ── Section cartes ── */
 .db-section {
   background: var(--color-bg);
-  flex: 1;
-  min-height: 0;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 1.75rem 1.25rem 1.5rem;
-  overflow: hidden;
 }
 
 .db-section-inner {
@@ -2918,8 +2917,6 @@ body {
   max-width: 600px;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
 }
 
 .db-section-label {
@@ -3423,7 +3420,7 @@ body {
    ============================ */
 .dorth-page {
   height: 100%;
-  background: #F0FDFA;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -3910,7 +3907,7 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--color-bg);
   overflow: hidden;
 }
 
@@ -5095,3 +5092,100 @@ body {
 }
 .quete-success-btn:hover { background: rgba(255,255,255,0.28); transform: translateY(-1px); }
 .quete-success-btn:active { transform: scale(0.97); }
+
+/* ============================
+   MODE SOMBRE — composants
+   (overrides pour éléments à couleurs
+    hardcodées non convertibles en variable)
+   ============================ */
+
+/* ── Parcours — bouton retour ── */
+[data-theme="dark"] .parcours-back-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+[data-theme="dark"] .parcours-back-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ── ExercicePartenaire — panneaux ── */
+[data-theme="dark"] .ep-instructions-bloc {
+  background: var(--color-white);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .ep-instructions-bloc--partenaire {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-dark);
+}
+[data-theme="dark"] .ep-instructions-step {
+  background: var(--color-white);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .ep-choix-btn {
+  background: var(--color-white);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .ep-choix-btn:hover:not(:disabled) {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+[data-theme="dark"] .ep-alternative,
+[data-theme="dark"] .ep-mot-cle {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-dark);
+}
+[data-theme="dark"] .ep-paire-mot,
+[data-theme="dark"] .ep-groupe-mot {
+  background: var(--color-white);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .ep-reponse-reveal {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-dark);
+}
+[data-theme="dark"] .ep-btn-secondaire:hover { background: var(--color-primary-light); }
+[data-theme="dark"] .ep-btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* ── Détecter — boutons noirs ── */
+[data-theme="dark"] .det-close,
+[data-theme="dark"] .detecter-close {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+}
+[data-theme="dark"] .det-timer {
+  background: var(--color-white);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+[data-theme="dark"] .det-play-btn { background: var(--color-primary); }
+[data-theme="dark"] .det-play-btn.det-play-btn--done { background: var(--color-primary-dark); }
+[data-theme="dark"] .det-btn-son {
+  background: var(--color-primary);
+  color: white;
+}
+[data-theme="dark"] .det-btn-son:not(:disabled):active { background: var(--color-primary-dark); }
+[data-theme="dark"] .det-btn-outline {
+  background: var(--color-white);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .det-btn-noir {
+  background: var(--color-primary);
+  color: white;
+}
+[data-theme="dark"] .det-btn-noir:hover { background: var(--color-primary-dark); }
+
+/* ── Décision orthographique — boutons de choix ── */
+[data-theme="dark"] .dorth-btn {
+  background: var(--color-white);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+/* ── Reconnaître — bouton outline résultats ── */
+[data-theme="dark"] .rs-btn--outline {
+  background: var(--color-white);
+  color: var(--color-text);
+}
