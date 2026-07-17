@@ -1258,6 +1258,14 @@ body {
   text-align: center;
 }
 
+.ep-footer-feedback-phrase {
+  font-size: 0.875rem;
+  color: rgba(255,255,255,0.85);
+  text-align: center;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
 .ep-btn-suivant-inline {
   display: flex;
   align-items: center;
