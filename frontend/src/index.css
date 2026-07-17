@@ -4985,3 +4985,58 @@ body {
   padding: 0.5rem 1.25rem;
   justify-content: center;
 }
+
+/* ══════════════════════════════════════════════
+   QUÊTE DU JOUR — Dashboard card
+══════════════════════════════════════════════ */
+.db-quete-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  border-radius: 16px;
+  padding: 1.125rem 1.25rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.25);
+}
+.db-quete-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(124,58,237,0.35); }
+.db-quete-card--done { background: linear-gradient(135deg, #059669, #0d9488); box-shadow: 0 4px 20px rgba(5,150,105,0.25); }
+.db-quete-left { display: flex; align-items: center; gap: 0.875rem; }
+.db-quete-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.db-quete-titre { font-size: 1rem; font-weight: 700; color: white; text-align: left; }
+.db-quete-sub { font-size: 0.8125rem; color: rgba(255,255,255,0.8); text-align: left; margin-top: 2px; }
+.db-quete-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; min-width: 72px; }
+.db-quete-pct { font-size: 1.125rem; font-weight: 800; color: white; }
+.db-quete-bar { width: 72px; height: 6px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden; }
+.db-quete-bar-fill { height: 100%; background: white; border-radius: 99px; transition: width 0.4s ease; }
+
+/* ══════════════════════════════════════════════
+   QUÊTE DU JOUR — Page
+══════════════════════════════════════════════ */
+.quete-page { min-height: 100vh; background: var(--color-bg); }
+.quete-header { padding: 1rem 1.25rem 0; }
+.quete-hero { background: linear-gradient(135deg, #7c3aed, #4f46e5); padding: 2rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.quete-hero-icon { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; }
+.quete-hero-title { font-size: 1.5rem; font-weight: 800; color: white; }
+.quete-hero-sub { font-size: 0.9375rem; color: rgba(255,255,255,0.85); text-align: center; }
+.quete-progress-bar { width: 100%; max-width: 300px; height: 8px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden; }
+.quete-progress-fill { height: 100%; background: white; border-radius: 99px; transition: width 0.4s ease; }
+.quete-list { display: flex; flex-direction: column; gap: 0.75rem; padding: 1.5rem 1.25rem; }
+.quete-item { display: flex; align-items: center; justify-content: space-between; background: var(--color-card); border: 1.5px solid var(--color-border); border-radius: 14px; padding: 1rem 1.125rem; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%; }
+.quete-item:hover:not(:disabled) { border-color: #7c3aed; transform: translateX(3px); }
+.quete-item--fait { border-color: #22c55e; background: rgba(34,197,94,0.06); }
+.quete-item--courant { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.12); }
+.quete-item--locked { opacity: 0.45; cursor: not-allowed; }
+.quete-item-left { display: flex; align-items: center; gap: 1rem; }
+.quete-item-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem; }
+.quete-item-titre { font-size: 0.9375rem; font-weight: 600; color: var(--color-text); }
+.quete-item-meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 2px; }
+.quete-item-niveau { font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+.quete-item-revision { font-size: 0.75rem; color: var(--color-text-muted); }
+.quete-complete-banner { margin: 0 1.25rem 2rem; background: linear-gradient(135deg, #059669, #0d9488); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; }
+.quete-complete-text { font-size: 1.125rem; font-weight: 800; color: white; }
+.quete-complete-sub { font-size: 0.875rem; color: rgba(255,255,255,0.85); }
