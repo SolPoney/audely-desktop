@@ -73,6 +73,7 @@ export const getQueteDuJour = async (req: Request, res: Response) => {
     if (exercices.length < 3) {
       const deja = exercices.map((e: any) => e.id);
       const placeholders = deja.length > 0 ? `AND e.id NOT IN (${deja.map(() => '?').join(',')})` : '';
+      const manquants = 3 - exercices.length;
       const [nouveaux] = await pool.execute(
         `SELECT e.id, e.titre, e.niveau, e.type_exercice, e.contenu, e.categorie_id,
                 0 AS intervalle_jours, 0 AS nb_revisions
@@ -82,8 +83,8 @@ export const getQueteDuJour = async (req: Request, res: Response) => {
          )
          ${placeholders}
          ORDER BY RAND()
-         LIMIT ?`,
-        [userId, ...deja, 3 - exercices.length],
+         LIMIT ${manquants}`,
+        [userId, ...deja],
       ) as any[];
       exercices = [...exercices, ...(nouveaux as any[])];
     }
