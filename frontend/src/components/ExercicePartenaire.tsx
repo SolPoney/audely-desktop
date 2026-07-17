@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
 import { X, Volume2, ChevronRight } from "lucide-react";
-import ResultScreen from "./ResultScreen";
 
 interface Props {
 	exercice: {
