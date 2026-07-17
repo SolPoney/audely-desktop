@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { ChevronLeft, CheckCircle2, ChevronRight, Lock } from "lucide-react";
+import { ChevronLeft, CheckCircle2, ChevronRight, Lock, Zap } from "lucide-react";
 
 interface ExerciceQuete {
 	id: number;
@@ -31,16 +31,6 @@ const TYPE_LABEL: Record<string, string> = {
 	decision:           "Décision",
 };
 
-const HERO_GRADIENT = "linear-gradient(160deg, #042F2E 0%, #065F4A 40%, #16a34a 100%)";
-const HERO_COULEUR  = "#16a34a";
-
-const NiveauIcon = () => (
-	<div style={{ display: "flex", alignItems: "flex-end", gap: 5, marginBottom: "1rem" }} aria-hidden="true">
-		<div style={{ width: 8, height: 14, background: "white", borderRadius: 4 }} />
-		<div style={{ width: 8, height: 24, background: "white", borderRadius: 4, opacity: 0.55 }} />
-		<div style={{ width: 8, height: 34, background: "white", borderRadius: 4, opacity: 0.3 }} />
-	</div>
-);
 
 const QueteDuJourPage = () => {
 	const navigate = useNavigate();
@@ -71,8 +61,8 @@ const QueteDuJourPage = () => {
 		<div className="pl-page">
 			<a href="#quete-content" className="skip-link">Aller au contenu</a>
 
-			{/* Header */}
-			<header className="pl-header" style={{ background: HERO_GRADIENT }}>
+			{/* Hero éclair */}
+			<div className="quete-hero">
 				<button
 					type="button"
 					className="pl-back"
@@ -82,47 +72,34 @@ const QueteDuJourPage = () => {
 					<ChevronLeft size={20} strokeWidth={2.5} />
 				</button>
 
-				<div className="pl-header-body">
-					<NiveauIcon />
-					<h1 className="pl-header-titre">Quête du jour</h1>
-					<p className="pl-header-count">
-						{loading
-							? "Chargement…"
-							: complete
-							? "Quête accomplie !"
-							: exercices.length > 0
-							? `${nbFaits} / ${exercices.length} terminés`
-							: "Revenez demain !"}
-					</p>
+				<div className="quete-hero-icon" aria-hidden="true">
+					<Zap size={30} color="white" strokeWidth={2.2} fill="rgba(255,255,255,0.3)" />
 				</div>
+				<h1 className="quete-hero-title">Quête du jour</h1>
+				<p className="quete-hero-sub">
+					{loading
+						? "Chargement…"
+						: complete
+						? "Félicitations, quête accomplie !"
+						: exercices.length > 0
+						? `${nbFaits} / ${exercices.length} exercices réalisés`
+						: "Revenez demain !"}
+				</p>
 
-				{/* Barre de progression dans le header */}
 				{!loading && exercices.length > 0 && (
-					<div style={{ marginTop: "1.25rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-						<div style={{
-							flex: 1, height: 8, background: "rgba(255,255,255,0.22)",
-							borderRadius: 99, overflow: "hidden",
-						}}
-							role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+					<div className="quete-pbar-wrap">
+						<div
+							className="quete-pbar"
+							role="progressbar"
+							aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
 							aria-label={`Progression : ${pct}%`}
 						>
-							<div style={{
-								height: "100%", width: `${pct}%`, background: "white",
-								borderRadius: 99, transition: "width 0.6s ease",
-							}} />
+							<div className="quete-pbar-fill" style={{ width: `${pct}%` }} />
 						</div>
-						<span style={{ fontSize: "0.8125rem", fontWeight: 800, color: "white", minWidth: 32 }}>
-							{pct}%
-						</span>
+						<span className="quete-pbar-pct">{pct}%</span>
 					</div>
 				)}
-
-				<div className="pl-header-wave" aria-hidden="true">
-					<svg viewBox="0 0 375 40" preserveAspectRatio="none">
-						<path d="M0,20 C80,40 295,0 375,20 L375,40 L0,40 Z" fill="var(--color-bg)" />
-					</svg>
-				</div>
-			</header>
+			</div>
 
 			{/* Contenu */}
 			<main id="quete-content" className="pl-scroll">
