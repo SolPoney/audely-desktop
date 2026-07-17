@@ -29,8 +29,9 @@ const QueteDuJourPage = () => {
 		fetch(`${API_URL}/api/quete-du-jour`, {
 			headers: { Authorization: `Bearer ${token}` },
 		})
-			.then(r => r.json())
+			.then(r => r.ok ? r.json() : null)
 			.then(data => {
+				if (!data) { setLoading(false); return; }
 				setExercices(data.exercices ?? []);
 				setNbFaits(data.nbFaits ?? 0);
 				setComplete(data.complete ?? false);
@@ -48,6 +49,23 @@ const QueteDuJourPage = () => {
 	}
 
 	const pct = exercices.length > 0 ? Math.round((nbFaits / exercices.length) * 100) : 0;
+
+	if (exercices.length === 0) {
+		return (
+			<div className="quete-page">
+				<div className="quete-header">
+					<button type="button" className="btn-back" onClick={() => navigate("/dashboard")}>← Retour</button>
+				</div>
+				<div style={{ padding: "3rem 1.5rem", textAlign: "center", color: "var(--color-text-muted)" }}>
+					<p style={{ fontSize: "2.5rem" }}>🎉</p>
+					<p style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--color-text)", marginTop: "0.5rem" }}>
+						Aucun exercice disponible
+					</p>
+					<p style={{ marginTop: "0.5rem" }}>Revenez demain pour votre prochaine quête !</p>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="quete-page">
