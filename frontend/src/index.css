@@ -3296,7 +3296,7 @@ body {
   gap: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #16A34A;
+  color: #15803D; /* green-700 — 5.02:1 sur blanc ✅ RGAA AA */
   margin-top: 0.1rem;
 }
 
@@ -3306,7 +3306,7 @@ body {
   gap: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #94A3B8;
+  color: #64748B; /* slate-500 — 4.76:1 sur blanc ✅ RGAA AA */
   margin-top: 0.1rem;
 }
 
@@ -5020,11 +5020,11 @@ body {
 
 /* Hero éclair */
 .quete-hero {
-  background: linear-gradient(145deg, #16a34a 0%, #059669 55%, #0d9488 100%);
+  background: linear-gradient(145deg, #042F2E 0%, #065F4A 40%, #15803D 100%);
   padding: 3.5rem 1.5rem 2.5rem;
   display: flex; flex-direction: column; align-items: center; gap: 0.875rem;
   border-radius: 0 0 36px 36px;
-  box-shadow: 0 10px 36px rgba(22,163,74,0.3), 0 2px 8px rgba(22,163,74,0.15);
+  box-shadow: 0 10px 36px rgba(6,95,74,0.35), 0 2px 8px rgba(6,95,74,0.18);
   position: relative; overflow: hidden;
 }
 .quete-hero::before {
@@ -5045,7 +5045,7 @@ body {
   font-size: 1.75rem; font-weight: 800; color: white;
   letter-spacing: -0.03em; line-height: 1.2;
 }
-.quete-hero-sub { font-size: 1rem; color: rgba(255,255,255,0.88); text-align: center; font-weight: 500; }
+.quete-hero-sub { font-size: 1rem; color: white; text-align: center; font-weight: 500; }
 .quete-pbar-wrap { display: flex; align-items: center; gap: 0.75rem; width: 100%; max-width: 320px; }
 .quete-pbar {
   flex: 1; height: 10px;

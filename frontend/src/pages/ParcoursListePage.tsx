@@ -27,9 +27,10 @@ const TYPE_LABEL: Record<string, string> = {
 	grave_aigu:              "Grave / Aigu",
 };
 
+/* Couleurs RGAA AA — 4.5:1 sur blanc et blanc sur couleur */
 const NIVEAU_CONFIG: Record<string, { label: string; couleur: string; gradient: string }> = {
-	facile:    { label: "Niveau facile",    couleur: "#0D9488", gradient: "linear-gradient(160deg, #042F2E 0%, #065F4A 40%, #0D9488 100%)" },
-	moyen:     { label: "Niveau moyen",     couleur: "#D97706", gradient: "linear-gradient(160deg, #451A03 0%, #92400E 40%, #D97706 100%)" },
+	facile:    { label: "Niveau facile",    couleur: "#0f766e", gradient: "linear-gradient(160deg, #042F2E 0%, #065F4A 40%, #0D9488 100%)" },
+	moyen:     { label: "Niveau moyen",     couleur: "#b45309", gradient: "linear-gradient(160deg, #451A03 0%, #92400E 40%, #D97706 100%)" },
 	difficile: { label: "Niveau difficile", couleur: "#DC2626", gradient: "linear-gradient(160deg, #450A0A 0%, #991B1B 40%, #DC2626 100%)" },
 };
 
@@ -145,7 +146,7 @@ const ParcoursListePage = () => {
 													? <CheckCircle2 size={18} strokeWidth={2.5} color="white" />
 													: unlocked
 														? <ChevronRight size={18} strokeWidth={2.5} color="white" />
-														: <Lock size={16} strokeWidth={2} color="#94A3B8" />
+														: <Lock size={16} strokeWidth={2} color="#64748B" />
 												}
 											</div>
 											<span

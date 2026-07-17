@@ -11,10 +11,11 @@ interface ExerciceQuete {
 	nb_revisions: number;
 }
 
+/* Couleurs RGAA AA — 4.5:1 sur blanc et blanc sur couleur */
 const NIVEAU_CONFIG: Record<string, { couleur: string; label: string }> = {
-	facile:    { couleur: "#0D9488", label: "Facile" },
-	moyen:     { couleur: "#D97706", label: "Moyen" },
-	difficile: { couleur: "#DC2626", label: "Difficile" },
+	facile:    { couleur: "#0f766e", label: "Facile" },   // teal-700  5.47:1
+	moyen:     { couleur: "#b45309", label: "Moyen" },    // amber-700 5.02:1
+	difficile: { couleur: "#DC2626", label: "Difficile" }, // red-600  4.83:1
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -140,7 +141,7 @@ const QueteDuJourPage = () => {
 														? <CheckCircle2 size={18} strokeWidth={2.5} color="white" />
 														: estCourant
 														? <ChevronRight size={18} strokeWidth={2.5} color="white" />
-														: <Lock size={16} strokeWidth={2} color="#94A3B8" />
+														: <Lock size={16} strokeWidth={2} color="#64748B" />
 													}
 												</div>
 												<span
