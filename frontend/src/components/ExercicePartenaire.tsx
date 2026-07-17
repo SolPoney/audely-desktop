@@ -674,11 +674,10 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			{ecran === "feedback" ? (
 				<div className={`ep-footer-feedback ${isCorrect ? "ep-footer-feedback--ok" : "ep-footer-feedback--ko"}`}>
 					<p className="ep-footer-feedback-label">
-						{isCorrect ? "Bonne réponse !" : `Réponse : ${question.reponse}`}
+						{question.choix[0] === "J'ai répété correctement"
+						? `« ${question.tts} »`
+						: isCorrect ? "Bonne réponse !" : `Réponse : ${question.reponse}`}
 					</p>
-					{question.choix[0] === "J'ai répété correctement" && (
-						<p className="ep-footer-feedback-phrase">« {question.tts} »</p>
-					)}
 					<button
 						type="button"
 						className="ep-btn-suivant-inline"
