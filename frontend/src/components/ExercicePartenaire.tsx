@@ -635,7 +635,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 						Écouter
 					</button>
 
-					{question.affichage !== "......" && (
+					{question.affichage !== "......" && question.choix[0] !== "J'ai répété correctement" && (
 						<p className="ep-phrase">{question.affichage}</p>
 					)}
 				</div>
