@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
 import {
 	Moon, Sun, LogOut, Headphones, Music, BarChart2,
-	Flame,
+	Flame, Zap,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 
@@ -25,9 +25,12 @@ const DashboardPage = () => {
 	const { theme, toggleTheme } = useTheme();
 	const prenom = getPrenom();
 
-	const [xp, setXp]        = useState<number | null>(null);
-	const [niveau, setNiveau] = useState<Niveau | null>(null);
-	const [streak, setStreak] = useState(0);
+	const [xp, setXp]               = useState<number | null>(null);
+	const [niveau, setNiveau]        = useState<Niveau | null>(null);
+	const [streak, setStreak]        = useState(0);
+	const [queteNb, setQueteNb]      = useState(0);
+	const [queteTotal, setQueteTotal] = useState(3);
+	const [queteFaite, setQueteFaite] = useState(false);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -38,6 +41,15 @@ const DashboardPage = () => {
 				setXp(data.xp ?? 0);
 				setNiveau(data.niveau ?? null);
 				setStreak(data.streak ?? 0);
+			})
+
+		fetch(`${API_URL}/api/quete-du-jour`, { headers: { Authorization: `Bearer ${token}` } })
+			.then(r => r.ok ? r.json() : null)
+			.then(data => {
+				if (!data) return;
+				setQueteNb(data.nbFaits ?? 0);
+				setQueteTotal(data.exercices?.length ?? 3);
+				setQueteFaite(data.complete ?? false);
 			})
 			.catch(() => {});
 	}, []);
@@ -122,6 +134,37 @@ const DashboardPage = () => {
 							</div>
 						)}
 
+					</div>
+				</div>
+
+				{/* ── Quête du jour ── */}
+				<div className="db-section">
+					<div className="db-section-inner">
+						<button
+							type="button"
+							className={`db-quete-card ${queteFaite ? "db-quete-card--done" : ""}`}
+							onClick={() => navigate("/quete")}
+						>
+							<div className="db-quete-left">
+								<div className="db-quete-icon" aria-hidden="true">
+									<Zap size={22} color="white" strokeWidth={2} />
+								</div>
+								<div>
+									<p className="db-quete-titre">Quête du jour</p>
+									<p className="db-quete-sub">
+										{queteFaite
+											? "Terminée ! Revenez demain 🎉"
+											: `${queteNb} / ${queteTotal} exercices`}
+									</p>
+								</div>
+							</div>
+							<div className="db-quete-right">
+								<div className="db-quete-pct">{Math.round((queteNb / queteTotal) * 100)}%</div>
+								<div className="db-quete-bar">
+									<div className="db-quete-bar-fill" style={{ width: `${Math.round((queteNb / queteTotal) * 100)}%` }} />
+								</div>
+							</div>
+						</button>
 					</div>
 				</div>
 
