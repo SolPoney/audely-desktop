@@ -11,7 +11,9 @@ import statsRoutes from './routes/statsRoutes.js'
 import { verifyToken } from './middlewares/authMiddleware.js';
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ?? '*',
+}));
 
 app.use(express.json());
 app.use('/api/auth', authRoutes);
