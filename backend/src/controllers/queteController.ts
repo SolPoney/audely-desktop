@@ -63,17 +63,17 @@ export const getQueteDuJour = async (req: Request, res: Response) => {
        JOIN Exercices e ON r.id_exercice = e.id
        WHERE r.id_utilisateur = ? AND r.prochaine_revision <= ?
        ORDER BY r.prochaine_revision ASC
-       LIMIT 3`,
+       LIMIT 10`,
       [userId, todayStr],
     ) as any[];
 
     let exercices = revisions as any[];
 
-    // 2. Si moins de 3, compléter avec des exercices jamais faits
-    if (exercices.length < 3) {
+    // 2. Si moins de 10, compléter avec des exercices jamais faits
+    if (exercices.length < 10) {
       const deja = exercices.map((e: any) => e.id);
       const placeholders = deja.length > 0 ? `AND e.id NOT IN (${deja.map(() => '?').join(',')})` : '';
-      const manquants = 3 - exercices.length;
+      const manquants = 10 - exercices.length;
       const [nouveaux] = await pool.execute(
         `SELECT e.id, e.titre, e.niveau, e.type_exercice, e.contenu, e.categorie_id,
                 0 AS intervalle_jours, 0 AS nb_revisions

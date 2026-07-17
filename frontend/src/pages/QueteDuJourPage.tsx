@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { Flame, ChevronRight, CheckCircle2, Lock } from "lucide-react";
+import { ChevronLeft, CheckCircle2, ChevronRight, Lock, Zap } from "lucide-react";
 
 interface ExerciceQuete {
 	id: number;
@@ -11,11 +11,27 @@ interface ExerciceQuete {
 	nb_revisions: number;
 }
 
-const NIVEAU_COLOR: Record<string, string> = {
-	facile: "#22c55e",
-	moyen: "#f59e0b",
-	difficile: "#ef4444",
+/* Couleurs RGAA AA — 4.5:1 sur blanc et blanc sur couleur */
+const NIVEAU_CONFIG: Record<string, { couleur: string; label: string }> = {
+	facile:    { couleur: "#0f766e", label: "Facile" },   // teal-700  5.47:1
+	moyen:     { couleur: "#b45309", label: "Moyen" },    // amber-700 5.02:1
+	difficile: { couleur: "#DC2626", label: "Difficile" }, // red-600  4.83:1
 };
+
+const TYPE_LABEL: Record<string, string> = {
+	detecter:           "Détection",
+	reconnaitre:        "Reconnaître",
+	reconnaitre_rythme: "Rythme",
+	distinguer:         "Distinction",
+	court_moyen_long:   "Durée",
+	comprendre:         "Compréhension",
+	memoriser:          "Mémoriser",
+	grave_aigu:         "Grave / Aigu",
+	themes:             "Thème",
+	mot_similaire:      "Mots similaires",
+	decision:           "Décision",
+};
+
 
 const QueteDuJourPage = () => {
 	const navigate = useNavigate();
@@ -40,14 +56,6 @@ const QueteDuJourPage = () => {
 			.catch(() => setLoading(false));
 	}, []);
 
-	if (loading) {
-		return (
-			<div className="quete-page">
-				<p className="loading-text">Chargement de votre quête…</p>
-			</div>
-		);
-	}
-
 	const pct = exercices.length > 0 ? Math.round((nbFaits / exercices.length) * 100) : 0;
 
 	if (exercices.length === 0) {
@@ -68,87 +76,156 @@ const QueteDuJourPage = () => {
 	}
 
 	return (
-		<div className="quete-page">
-			{/* Header */}
-			<div className="quete-header">
-				<button type="button" className="btn-back" onClick={() => navigate("/dashboard")}>
-					← Retour
-				</button>
-			</div>
+		<div className="pl-page">
+			<a href="#quete-content" className="skip-link">Aller au contenu</a>
 
-			{/* Hero */}
+			{/* Hero éclair */}
 			<div className="quete-hero">
+				<button
+					type="button"
+					className="pl-back"
+					onClick={() => navigate("/dashboard")}
+					aria-label="Retour au tableau de bord"
+				>
+					<ChevronLeft size={20} strokeWidth={2.5} />
+				</button>
+
 				<div className="quete-hero-icon" aria-hidden="true">
-					<Flame size={32} color="white" strokeWidth={2} />
+					<Zap size={30} color="white" strokeWidth={2.2} fill="rgba(255,255,255,0.3)" />
 				</div>
 				<h1 className="quete-hero-title">Quête du jour</h1>
 				<p className="quete-hero-sub">
-					{complete
-						? "Bravo ! Vous avez terminé votre quête du jour 🎉"
-						: `${nbFaits} / ${exercices.length} exercices complétés`}
+					{loading
+						? "Chargement…"
+						: complete
+						? "Félicitations, quête accomplie !"
+						: exercices.length > 0
+						? `${nbFaits} / ${exercices.length} exercices réalisés`
+						: "Revenez demain !"}
 				</p>
 
-				{/* Barre de progression */}
-				<div className="quete-progress-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-					<div className="quete-progress-fill" style={{ width: `${pct}%` }} />
-				</div>
-			</div>
-
-			{/* Liste des exercices */}
-			<div className="quete-list">
-				{exercices.map((exo, i) => {
-					const estFait = i < nbFaits;
-					const estCourant = i === nbFaits && !complete;
-					const estVerrouille = i > nbFaits && !complete;
-
-					return (
-						<button
-							key={exo.id}
-							type="button"
-							className={`quete-item ${estFait ? "quete-item--fait" : ""} ${estCourant ? "quete-item--courant" : ""} ${estVerrouille ? "quete-item--locked" : ""}`}
-							onClick={() => !estVerrouille && navigate(`/exercice/${exo.id}`)}
-							disabled={estVerrouille}
+				{!loading && exercices.length > 0 && (
+					<div className="quete-pbar-wrap">
+						<div
+							className="quete-pbar"
+							role="progressbar"
+							aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+							aria-label={`Progression : ${pct}%`}
 						>
-							<div className="quete-item-left">
-								<div className="quete-item-num" style={{ background: estFait ? "#22c55e" : estCourant ? "#7c3aed" : "#e2e8f0" }}>
-									{estFait
-										? <CheckCircle2 size={18} color="white" strokeWidth={2.5} />
-										: estVerrouille
-										? <Lock size={16} color="#94a3b8" strokeWidth={2} />
-										: <span style={{ color: "white", fontWeight: 800 }}>{i + 1}</span>
-									}
-								</div>
-								<div className="quete-item-info">
-									<p className="quete-item-titre">{exo.titre}</p>
-									<div className="quete-item-meta">
-										<span className="quete-item-niveau" style={{ color: NIVEAU_COLOR[exo.niveau] }}>
-											{exo.niveau}
-										</span>
-										{exo.nb_revisions > 0 && (
-											<span className="quete-item-revision">
-												🔁 Révision #{exo.nb_revisions + 1}
-											</span>
-										)}
-									</div>
-								</div>
-							</div>
-							{!estVerrouille && !estFait && (
-								<ChevronRight size={20} color="#94a3b8" strokeWidth={2} />
-							)}
-						</button>
-					);
-				})}
+							<div className="quete-pbar-fill" style={{ width: `${pct}%` }} />
+						</div>
+						<span className="quete-pbar-pct">{pct}%</span>
+					</div>
+				)}
 			</div>
 
-			{complete && (
-				<div className="quete-complete-banner">
-					<p className="quete-complete-text">🏆 Quête du jour accomplie !</p>
-					<p className="quete-complete-sub">Revenez demain pour de nouveaux exercices.</p>
-					<button type="button" className="rythme-btn-noir" onClick={() => navigate("/dashboard")}>
-						Retour au tableau de bord
-					</button>
-				</div>
-			)}
+			{/* Contenu */}
+			<main id="quete-content" className="pl-scroll">
+				{loading ? (
+					<p className="loading-text" aria-live="polite">Chargement de votre quête…</p>
+				) : exercices.length === 0 ? (
+					<div className="quete-empty">
+						<p className="quete-empty-icon">🌱</p>
+						<p className="quete-empty-titre">Revenez demain !</p>
+						<p className="quete-empty-sub">Votre prochaine quête vous attend.</p>
+					</div>
+				) : (
+					<>
+						<ol className="pl-timeline" aria-label="Exercices de la quête du jour">
+							{exercices.map((exo, i) => {
+								const estFait       = i < nbFaits;
+								const estCourant    = i === nbFaits && !complete;
+								const estVerrouille = !estFait && !estCourant;
+								const cfg = NIVEAU_CONFIG[exo.niveau] ?? NIVEAU_CONFIG.facile;
+								const couleur = estVerrouille ? "#CBD5E1" : cfg.couleur;
+
+								return (
+									<li key={exo.id} className="pl-item" style={{ animationDelay: `${i * 55}ms` }}>
+										<div
+											className="pl-item-left"
+											aria-hidden="true"
+											style={{ "--level-color": couleur } as React.CSSProperties}
+										>
+											<div className="pl-cercle-wrap">
+												<div
+													className="pl-cercle"
+													style={{
+														borderColor: couleur,
+														background: estFait || estCourant ? couleur : "#F1F5F9",
+													}}
+												>
+													{estFait
+														? <CheckCircle2 size={18} strokeWidth={2.5} color="white" />
+														: estCourant
+														? <ChevronRight size={18} strokeWidth={2.5} color="white" />
+														: <Lock size={16} strokeWidth={2} color="#64748B" />
+													}
+												</div>
+												<span
+													className="pl-num-badge"
+													style={{ background: couleur }}
+												>
+													{String(i + 1).padStart(2, "0")}
+												</span>
+											</div>
+											{i < exercices.length - 1 && (
+												<div
+													className="pl-ligne"
+													style={{ background: estFait ? cfg.couleur : undefined }}
+												/>
+											)}
+										</div>
+
+										<button
+											type="button"
+											className={`pl-card${estVerrouille ? " pl-card--locked" : ""}${estFait ? " pl-card--done" : ""}`}
+											onClick={() => estCourant && navigate(`/exercice/${exo.id}`)}
+											disabled={estVerrouille || estFait}
+											aria-label={`Exercice ${i + 1} : ${exo.titre}${estVerrouille ? " (verrouillé)" : ""}`}
+										>
+											<span className="pl-card-type" style={{ color: estVerrouille ? "#94A3B8" : cfg.couleur }}>
+												{TYPE_LABEL[exo.type_exercice] ?? "Exercice"}
+												{exo.nb_revisions > 0 && " · Révision"}
+											</span>
+											<span className="pl-card-titre">{exo.titre}</span>
+											{estFait && (
+												<span className="plp-done-badge">
+													<CheckCircle2 size={13} strokeWidth={2.5} />
+													Complété
+												</span>
+											)}
+											{estCourant && (
+												<span className="plp-unlock-badge" style={{ "--plp-unlock-color": cfg.couleur } as React.CSSProperties}>
+													<ChevronRight size={12} strokeWidth={2.5} />
+													{cfg.label}
+												</span>
+											)}
+											{estVerrouille && (
+												<span className="plp-lock-badge">
+													<Lock size={12} strokeWidth={2.5} />
+													Terminez l'exercice précédent
+												</span>
+											)}
+										</button>
+									</li>
+								);
+							})}
+						</ol>
+
+						{/* Bannière succès */}
+						{complete && (
+							<div className="quete-success">
+								<p className="quete-success-emoji">🏆</p>
+								<p className="quete-success-titre">Quête du jour accomplie !</p>
+								<p className="quete-success-sub">Revenez demain pour de nouveaux exercices.</p>
+								<button type="button" className="quete-success-btn" onClick={() => navigate("/dashboard")}>
+									Retour au tableau de bord
+								</button>
+							</div>
+						)}
+					</>
+				)}
+			</main>
 		</div>
 	);
 };
