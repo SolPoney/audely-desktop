@@ -8,6 +8,7 @@ import ParcoursPage from "./pages/ParcoursPage";
 import ParcoursListePage from "./pages/ParcoursListePage";
 import ExercicesCatPage from "./pages/ExercicesCatPage";
 import StatsPage from "./pages/StatsPage";
+import QueteDuJourPage from "./pages/QueteDuJourPage";
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         <Route path="/parcours/:niveau" element={<PrivateRoute><ParcoursListePage /></PrivateRoute>} />
         <Route path="/exercices/categorie/:id" element={<PrivateRoute><ExercicesCatPage /></PrivateRoute>} />
         <Route path="/stats" element={<PrivateRoute><StatsPage /></PrivateRoute>} />
+        <Route path="/quete" element={<PrivateRoute><QueteDuJourPage /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );
