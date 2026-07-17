@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
 import {
-	Moon, Sun, LogOut, Headphones, Music, ChevronRight, BarChart2,
-	Flame, Play, Trophy, Zap, Award, Star, TrendingUp,
+	Moon, Sun, LogOut, Headphones, Music, BarChart2,
+	Flame,
 } from "lucide-react";
 import { API_URL } from "../config/api";
-
-const WAVE_HEIGHTS = [8, 14, 20, 12, 26, 18, 10, 22, 16, 28, 12, 20, 8, 24, 16, 10, 18, 26, 14, 20, 8, 22, 16, 12, 28];
 
 const getPrenom = (): string => {
 	try {
@@ -20,47 +18,7 @@ const getPrenom = (): string => {
 	}
 };
 
-interface Badge { id: string; emoji: string; titre: string; description: string; unlocked: boolean; }
 interface Niveau { nom: string; niveau: number; prevXP: number; nextXP: number | null; xpPct: number; }
-
-/* ── Config visuelle par badge ── */
-const BADGE_CFG: Record<string, { icon: React.ReactNode; gradient: string; glow: string }> = {
-	premier_pas: {
-		icon:     <Play     size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #93C5FD 0%, #3B82F6 55%, #1D4ED8 100%)",
-		glow:     "rgba(59,130,246,0.45)",
-	},
-	score_parfait: {
-		icon:     <Trophy   size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #FDE68A 0%, #F59E0B 50%, #D97706 100%)",
-		glow:     "rgba(245,158,11,0.5)",
-	},
-	serie_3: {
-		icon:     <Flame    size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #FCA5A5 0%, #EF4444 55%, #DC2626 100%)",
-		glow:     "rgba(239,68,68,0.45)",
-	},
-	serie_7: {
-		icon:     <Zap      size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #C4B5FD 0%, #7C3AED 55%, #5B21B6 100%)",
-		glow:     "rgba(124,58,237,0.45)",
-	},
-	dix_sessions: {
-		icon:     <Award    size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #6EE7B7 0%, #10B981 55%, #047857 100%)",
-		glow:     "rgba(16,185,129,0.45)",
-	},
-	facile_maitrise: {
-		icon:     <Star     size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #FEF08A 0%, #EAB308 45%, #92400E 100%)",
-		glow:     "rgba(234,179,8,0.5)",
-	},
-	niveau_moyen: {
-		icon:     <TrendingUp size={20} strokeWidth={2.2} color="white" />,
-		gradient: "linear-gradient(145deg, #67E8F9 0%, #06B6D4 55%, #0E7490 100%)",
-		glow:     "rgba(6,182,212,0.45)",
-	},
-};
 
 const DashboardPage = () => {
 	const navigate = useNavigate();
@@ -69,7 +27,6 @@ const DashboardPage = () => {
 
 	const [xp, setXp]        = useState<number | null>(null);
 	const [niveau, setNiveau] = useState<Niveau | null>(null);
-	const [badges, setBadges] = useState<Badge[]>([]);
 	const [streak, setStreak] = useState(0);
 
 	useEffect(() => {
@@ -80,7 +37,6 @@ const DashboardPage = () => {
 				if (!data) return;
 				setXp(data.xp ?? 0);
 				setNiveau(data.niveau ?? null);
-				setBadges(data.badges ?? []);
 				setStreak(data.streak ?? 0);
 			})
 			.catch(() => {});
@@ -91,7 +47,7 @@ const DashboardPage = () => {
 		navigate("/");
 	};
 
-	const unlockedCount = badges.filter(b => b.unlocked).length;
+	const xpToNext = xp !== null && niveau?.nextXP !== null ? (niveau!.nextXP! - xp) : null;
 
 	return (
 		<div className="dashboard-page">
@@ -102,121 +58,128 @@ const DashboardPage = () => {
 				{/* ── Hero ── */}
 				<div className="db-hero">
 					<div className="db-hero-inner">
+
+						{/* Actions top-right */}
 						<div className="db-hero-actions">
 							<button type="button" className="db-hero-btn-icon" onClick={toggleTheme}
 								aria-label={theme === "dark" ? "Activer le mode clair" : "Activer le mode sombre"}>
-								{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+								{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
 							</button>
 							<button type="button" className="db-hero-btn-icon" onClick={handleLogout} aria-label="Se déconnecter">
-								<LogOut size={16} />
+								<LogOut size={17} />
 							</button>
 						</div>
+
+						{/* Greeting */}
 						<div className="db-hero-body">
 							<div className="db-hero-avatar" aria-hidden="true">
 								{prenom ? prenom[0].toUpperCase() : "A"}
 							</div>
-							<div>
-								<h1 className="db-hero-title">Bonjour{prenom ? ` ${prenom}` : ""}&nbsp;!</h1>
+							<div className="db-hero-text">
+								<h1 className="db-hero-title">
+									{prenom ? `Bonjour, ${prenom}\u00A0!` : "Bonjour\u00A0!"}
+								</h1>
 								<p className="db-hero-sub">Prêt à vous entraîner aujourd'hui&nbsp;?</p>
 							</div>
 						</div>
-					</div>
-					<div className="db-hero-wave" aria-hidden="true">
-						{WAVE_HEIGHTS.map((h, i) => (
-							<div key={i} className="db-hero-wave-bar" style={{ height: `${h}px` }} />
-						))}
+
+						{/* XP & niveau */}
+						{xp !== null && niveau && (
+							<div className="db-hero-xp">
+								<div className="db-hero-xp-chips">
+									<span className="db-hero-chip db-hero-chip--niveau">
+										{niveau.nom}&nbsp;·&nbsp;Niv.&nbsp;{niveau.niveau}
+									</span>
+									{streak > 0 && (
+										<span className="db-hero-chip db-hero-chip--streak"
+											aria-label={`${streak} jours consécutifs`}>
+											<Flame size={12} strokeWidth={2.5} aria-hidden="true" />
+											{streak}&nbsp;jour{streak > 1 ? "s" : ""}
+										</span>
+									)}
+									<span className="db-hero-chip db-hero-chip--xp">{xp.toLocaleString("fr-FR")}&nbsp;XP</span>
+								</div>
+
+								{niveau.nextXP !== null && (
+									<>
+										<div
+											className="db-hero-xpbar"
+											role="progressbar"
+											aria-valuenow={niveau.xpPct}
+											aria-valuemin={0}
+											aria-valuemax={100}
+											aria-label={`Progression XP : ${niveau.xpPct}%`}
+										>
+											<div className="db-hero-xpbar-fill" style={{ width: `${niveau.xpPct}%` }} />
+										</div>
+										{xpToNext !== null && (
+											<p className="db-hero-xp-hint">
+												Plus que&nbsp;<strong>{xpToNext}&nbsp;XP</strong> pour le niveau&nbsp;{niveau.niveau + 1}
+											</p>
+										)}
+									</>
+								)}
+							</div>
+						)}
+
 					</div>
 				</div>
 
-				{/* ── Bande XP ── */}
-				{xp !== null && niveau && (
-					<div className="db-xp-strip">
-						<div className="db-xp-strip-row1">
-							<div className="db-xp-strip-meta">
-								<span className="db-niveau-dot" aria-hidden="true" />
-								<span className="db-niveau-nom">{niveau.nom}</span>
-								<span className="db-niveau-tag">Niv.&nbsp;{niveau.niveau}</span>
-							</div>
-							<div className="db-xp-strip-end">
-								{streak > 0 && (
-									<span className="db-streak-chip" aria-label={`${streak} jours consécutifs`}>
-										<Flame size={11} strokeWidth={2.5} aria-hidden="true" />
-										{streak}j
-									</span>
-								)}
-								<span className="db-xp-count">{xp}&nbsp;XP</span>
-							</div>
-						</div>
-						<div className="db-xp-strip-row2">
-							<div
-								className="db-xp-strip-bar"
-								role="progressbar"
-								aria-valuenow={niveau.xpPct}
-								aria-valuemin={0}
-								aria-valuemax={100}
-								aria-label={`Progression XP : ${niveau.xpPct}%`}
-							>
-								<div className="db-xp-strip-fill" style={{ width: `${niveau.xpPct}%` }} />
-							</div>
-							{niveau.nextXP !== null && (
-								<span className="db-xp-hint">
-									{niveau.nextXP - xp}&nbsp;XP → niv.&nbsp;{niveau.niveau + 1}
-								</span>
-							)}
-						</div>
-					</div>
-				)}
-
-				{/* ── Cartes de navigation ── */}
+				{/* ── Cartes ── */}
 				<div className="db-section">
 					<div className="db-section-inner">
-						<p className="db-section-label">Commencez votre séance</p>
+						<p className="db-section-label">Que voulez-vous faire ?</p>
 						<nav aria-label="Navigation principale">
 							<ul className="db-choix" role="list">
 								<li>
-									<button type="button" className="db-card" onClick={() => navigate("/parcours")}
+									<button type="button" className="db-card db-card--teal"
+										onClick={() => navigate("/parcours")}
 										aria-label="Accéder aux parcours d'entraînement">
-										<div className="db-card-icon db-card-icon--teal" aria-hidden="true">
-											<Headphones size={32} color="white" strokeWidth={1.6} />
+										<div className="db-card-icon-wrap" aria-hidden="true">
+											<div className="db-card-icon db-card-icon--teal">
+												<Headphones size={34} color="white" strokeWidth={1.6} />
+											</div>
 										</div>
 										<div className="db-card-text">
-											<p className="db-card-titre">Parcours d'entraînement</p>
-											<p className="db-card-sous">Suivez un programme guidé adapté à votre progression</p>
+											<p className="db-card-titre">Parcours</p>
+											<p className="db-card-sous">Programme guidé et progressif adapté à votre niveau</p>
 										</div>
-										<ChevronRight size={20} className="db-card-chevron" aria-hidden="true" />
 									</button>
 								</li>
 								<li>
-									<button type="button" className="db-card" onClick={() => navigate("/exercices")}
+									<button type="button" className="db-card db-card--violet"
+										onClick={() => navigate("/exercices")}
 										aria-label="Choisir un exercice libre">
-										<div className="db-card-icon db-card-icon--violet" aria-hidden="true">
-											<Music size={32} color="white" strokeWidth={1.6} />
+										<div className="db-card-icon-wrap" aria-hidden="true">
+											<div className="db-card-icon db-card-icon--violet">
+												<Music size={34} color="white" strokeWidth={1.6} />
+											</div>
 										</div>
 										<div className="db-card-text">
-											<p className="db-card-titre">Choisir un exercice</p>
-											<p className="db-card-sous">Accédez à tous les exercices disponibles</p>
+											<p className="db-card-titre">Exercices libres</p>
+											<p className="db-card-sous">Choisissez librement parmi tous les exercices disponibles</p>
 										</div>
-										<ChevronRight size={20} className="db-card-chevron" aria-hidden="true" />
 									</button>
 								</li>
 								<li>
-									<button type="button" className="db-card" onClick={() => navigate("/stats")}
+									<button type="button" className="db-card db-card--green"
+										onClick={() => navigate("/stats")}
 										aria-label="Voir mes progrès">
-										<div className="db-card-icon db-card-icon--green" aria-hidden="true">
-											<BarChart2 size={32} color="white" strokeWidth={1.6} />
+										<div className="db-card-icon-wrap" aria-hidden="true">
+											<div className="db-card-icon db-card-icon--green">
+												<BarChart2 size={34} color="white" strokeWidth={1.6} />
+											</div>
 										</div>
 										<div className="db-card-text">
 											<p className="db-card-titre">Mes progrès</p>
-											<p className="db-card-sous">Consultez vos scores et votre progression</p>
+											<p className="db-card-sous">Scores, statistiques, badges et historique de vos sessions</p>
 										</div>
-										<ChevronRight size={20} className="db-card-chevron" aria-hidden="true" />
 									</button>
 								</li>
 							</ul>
 						</nav>
 					</div>
 				</div>
-
 
 			</main>
 		</div>

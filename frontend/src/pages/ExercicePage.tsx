@@ -5,6 +5,7 @@ import { getUserId } from "../hooks/useAuth";
 import { toast } from "sonner";
 import { useTheme } from "../hooks/useTheme";
 import DetecterExercice from "../components/DetecterExercice";
+import MotSimilaireExercice from "../components/MotSimilaireExercice";
 import ReconnaitreRythmeExercice from "../components/ReconnaitreRythmeExercice";
 import DistinguerExercice from "../components/DistinguerExercice";
 import CourtMoyenLongExercice from "../components/CourtMoyenLongExercice";
@@ -93,7 +94,19 @@ const ExercicePage = () => {
 		);
 	}
 
+	const contenuParsed = exercice.contenu
+		? (typeof exercice.contenu === "string" ? JSON.parse(exercice.contenu) : exercice.contenu)
+		: null;
+
 	if (exercice.type_exercice === "detecter") {
+		// → ExercicePartenaire pour les variantes non-interactives
+		if (
+			(contenuParsed?.phrases && typeof contenuParsed.phrases[0] === "string") ||
+			(contenuParsed?.mots && contenuParsed.mots[0]?.type) ||
+			contenuParsed?.syllabes
+		) {
+			return <ExercicePartenaire exercice={exercice} />;
+		}
 		return <DetecterExercice exercice={exercice} />;
 	}
 
@@ -110,11 +123,23 @@ const ExercicePage = () => {
 	}
 
 	if (exercice.type_exercice === "court_moyen_long") {
+		// "Quelle phrase a été dite" / "Écart de syllabes croissant" → ExercicePartenaire
+		if (contenuParsed?.groupes || contenuParsed?.niveaux) {
+			return <ExercicePartenaire exercice={exercice} />;
+		}
 		return <CourtMoyenLongExercice exercice={exercice} />;
 	}
 
 	if (exercice.type_exercice === "decision_orthographique") {
 		return <DecisionOrthographiqueExercice exercice={exercice} />;
+	}
+
+	if (exercice.type_exercice === "percevoir") {
+		return <ExercicePartenaire exercice={exercice} />;
+	}
+
+	if (exercice.type_exercice === "mot_similaire") {
+		return <MotSimilaireExercice exercice={exercice} />;
 	}
 
 	/* — Exercices avec contenu JSON (partenaire) */

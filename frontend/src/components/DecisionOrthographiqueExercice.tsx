@@ -2,12 +2,11 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
-import { X, Volume2, ChevronRight } from "lucide-react";
-import ResultScreen from "./ResultScreen";
+import { X, ChevronRight } from "lucide-react";
 
 interface MotItem {
-	mot: string;        // la bonne réponse, lue par TTS
-	choix: string[];    // 3 options dont la bonne
+	mot: string;
+	choix: string[];
 }
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
 	};
 }
 
-/* TTS */
 let audioEnCours: HTMLAudioElement | null = null;
 
 const lire = (texte: string, onEnd?: () => void) => {
@@ -53,13 +51,13 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	const mots: MotItem[] = contenuParsed?.mots ?? [];
 	const total = mots.length;
 
-	const [ecran, setEcran]         = useState<"exercice" | "resultats">("exercice");
-	const [index, setIndex]         = useState(0);
-	const [aEcoute, setAEcoute]     = useState(false);
-	const [choix, setChoix]         = useState<string | null>(null);
-	const [feedback, setFeedback]   = useState<"ok" | "ko" | null>(null);
-	const [score, setScore]         = useState(0);
-	const [jouant, setJouant]       = useState(false);
+	const [ecran, setEcran]       = useState<"exercice" | "resultats">("exercice");
+	const [index, setIndex]       = useState(0);
+	const [aEcoute, setAEcoute]   = useState(false);
+	const [choix, setChoix]       = useState<string | null>(null);
+	const [feedback, setFeedback] = useState<"ok" | "ko" | null>(null);
+	const [score, setScore]       = useState(0);
+	const [jouant, setJouant]     = useState(false);
 
 	const question = mots[index];
 
@@ -72,7 +70,6 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 		});
 	}, [question, jouant]);
 
-	// Lecture auto à chaque nouvelle question
 	useEffect(() => {
 		setAEcoute(false);
 		setChoix(null);
@@ -82,16 +79,15 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	}, [index]);
 
 	const valider = (option: string) => {
-		if (feedback) return;
+		if (feedback || !aEcoute) return;
 		setChoix(option);
 		const correct = option === question.mot;
-		setFeedback(correct ? "ok" : "ko");
 		if (correct) setScore(s => s + 1);
+		setFeedback(correct ? "ok" : "ko");
 	};
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			// Enregistrer le résultat
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
 				method: "POST",
@@ -99,23 +95,22 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 				body: JSON.stringify({
 					id_utilisateur: getUserId(),
 					id_exercice: exercice.id,
-					score: Math.round((score + (feedback === "ok" ? 1 : 0)) / total * 100),
+					score: Math.round((score / total) * 100),
 				}),
 			});
-			setScore(s => s + (feedback === "ok" ? 1 : 0));
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
 		}
 	};
 
-	/* ── Écran résultats ── */
+	/* ── Résultats ── */
 	if (ecran === "resultats") {
-		const finalScore = score;
+		const pct = Math.round((score / total) * 100);
 		return (
 			<div className="det-result">
 				<h1 className="det-result-score">
-					{finalScore} / {total} bonne{finalScore > 1 ? "s" : ""} réponse{finalScore > 1 ? "s" : ""}.
+					{score} / {total} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
 				</h1>
 				<div className="ep-result-ring" aria-hidden="true">
 					<svg viewBox="0 0 120 120" width="180" height="180">
@@ -125,21 +120,19 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 							fill="none" stroke="#0D9488" strokeWidth="10"
 							strokeLinecap="round"
 							strokeDasharray={2 * Math.PI * 50}
-							strokeDashoffset={2 * Math.PI * 50 * (1 - finalScore / total)}
+							strokeDashoffset={2 * Math.PI * 50 * (1 - pct / 100)}
 							transform="rotate(-90 60 60)"
 						/>
-						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">
-							{Math.round(finalScore / total * 100)}%
-						</text>
+						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">{pct}%</text>
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(finalScore, total)}</p>
+				<p className="det-result-message">{getMessage(score, total)}</p>
 				<div className="det-result-actions">
-					<button className="det-btn-outline" onClick={() => navigate(-1)}>
+					<button type="button" className="det-btn-outline" onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}>
 						Retour aux exercices
 					</button>
-					<button className="det-btn-noir" onClick={() => navigate("/dashboard")}>
+					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>
 						Continuer
 					</button>
 				</div>
@@ -149,19 +142,18 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 
 	if (!question) return null;
 
-	/* ── Écran exercice ── */
+	/* ── Exercice ── */
 	return (
 		<div className="dorth-page">
-			{/* Topbar */}
 			<div className="ep-topbar">
 				<button
+					type="button"
 					className="ep-close"
 					onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}
 					aria-label="Fermer"
 				>
 					<X size={18} strokeWidth={2.5} />
 				</button>
-
 				<div
 					className="ep-progress"
 					role="progressbar"
@@ -177,36 +169,37 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 				<span className="ep-progress-label">{index + 1} / {total}</span>
 			</div>
 
-			{/* Instruction */}
-			<p className="dorth-instruction">DE QUOI S'AGIT-IL ?</p>
+			<p className="dorth-instruction">Quel mot avez-vous entendu ?</p>
 
-			{/* Carte centrale */}
 			<div className="dorth-card-area">
-				<div className="dorth-card">
+				<div className={`dorth-play-wrap${jouant ? " dorth-play-wrap--playing" : ""}`}>
 					<button
 						type="button"
-						className={`ep-play-btn${jouant ? " ep-play-btn--playing" : ""}`}
+						className={`rythme-big-play${jouant ? " dorth-play--on" : ""}`}
 						onClick={jouer}
+						disabled={jouant}
 						aria-label="Écouter le mot"
 					>
-						<Volume2 size={20} strokeWidth={1.8} />
-						{jouant ? "Écoute…" : "Écouter"}
+						<svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+							<polygon points="5,3 19,12 5,21" />
+						</svg>
 					</button>
-
-					{!aEcoute && !jouant && (
-						<p className="dorth-hint">Appuyez sur Écouter pour entendre le mot</p>
-					)}
 				</div>
+				<div className={`dorth-waveform${jouant ? " dorth-waveform--playing" : " dorth-waveform--idle"}`} aria-hidden="true">
+					{[1,2,3,4,5,6,7].map(i => <div key={i} className="dorth-waveform-bar" />)}
+				</div>
+				<p className="rythme-play-hint">
+					{jouant ? "Écoute en cours…" : aEcoute ? "Appuyer pour réécouter" : "Écoute en cours…"}
+				</p>
 			</div>
 
-			{/* Choix */}
 			<div className="dorth-choix">
 				{question.choix.map((option) => {
 					let cls = "dorth-btn";
 					if (feedback) {
-						if (option === question.mot)    cls += " dorth-btn--correct";
-						else if (option === choix)      cls += " dorth-btn--incorrect";
-						else                            cls += " dorth-btn--disabled";
+						if (option === question.mot)  cls += " dorth-btn--correct";
+						else if (option === choix)    cls += " dorth-btn--incorrect";
+						else                          cls += " dorth-btn--disabled";
 					} else if (!aEcoute) {
 						cls += " dorth-btn--locked";
 					}
@@ -224,7 +217,6 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 				})}
 			</div>
 
-			{/* Feedback bar */}
 			{feedback ? (
 				<div className={`ep-footer-feedback ${feedback === "ok" ? "ep-footer-feedback--ok" : "ep-footer-feedback--ko"}`}>
 					<p className="ep-footer-feedback-label">
@@ -236,7 +228,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 					</button>
 				</div>
 			) : (
-				<div className="ep-footer-spacer" />
+				<div style={{ height: "1.5rem", flexShrink: 0 }} />
 			)}
 		</div>
 	);

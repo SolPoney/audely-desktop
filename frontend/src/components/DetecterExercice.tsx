@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
 import { X, Play, Pause, Clock } from "lucide-react";
-import ResultScreen from "./ResultScreen";
 
 interface Props {
 	exercice: {
@@ -59,45 +58,6 @@ const getMessage = (bonnes: number, total: number): string => {
 	return "Ne vous découragez pas, réessayez !";
 };
 
-/* ── Illustration SVG ── */
-const IllustrationEcoute = () => (
-	<svg viewBox="0 0 280 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-		{/* Fond cercle doux */}
-		<circle cx="140" cy="110" r="95" fill="#F0FDFA" />
-
-		{/* Corps */}
-		<ellipse cx="140" cy="178" rx="42" ry="24" fill="#E2E8F0" />
-		<rect x="118" y="148" width="44" height="38" rx="10" fill="#CBD5E1" />
-
-		{/* Tête */}
-		<circle cx="140" cy="108" r="36" fill="#FFD5A8" />
-
-		{/* Bandeau casque */}
-		<path d="M104 100 Q140 68 176 100" stroke="#1E293B" strokeWidth="6" fill="none" strokeLinecap="round" />
-
-		{/* Oreillettes */}
-		<rect x="96" y="97" width="17" height="24" rx="8.5" fill="#0D9488" />
-		<rect x="167" y="97" width="17" height="24" rx="8.5" fill="#0D9488" />
-
-		{/* Yeux */}
-		<ellipse cx="130" cy="108" rx="4.5" ry="5" fill="#1E293B" />
-		<ellipse cx="150" cy="108" rx="4.5" ry="5" fill="#1E293B" />
-		<circle cx="131.5" cy="106.5" r="1.5" fill="white" />
-		<circle cx="151.5" cy="106.5" r="1.5" fill="white" />
-
-		{/* Sourire */}
-		<path d="M129 122 Q140 133 151 122" stroke="#1E293B" strokeWidth="3" fill="none" strokeLinecap="round" />
-
-		{/* Ondes sonores droite */}
-		<path d="M194 93 Q206 110 194 127" stroke="#0D9488" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-		<path d="M205 84 Q222 110 205 136" stroke="#0D9488" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.55" />
-		<path d="M216 76 Q238 110 216 144" stroke="#0D9488" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.25" />
-
-		{/* Ondes sonores gauche */}
-		<path d="M86 93 Q74 110 86 127" stroke="#0D9488" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-		<path d="M75 84 Q58 110 75 136" stroke="#0D9488" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.55" />
-	</svg>
-);
 
 const DetecterExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
@@ -170,7 +130,9 @@ const DetecterExercice = ({ exercice }: Props) => {
 				body: JSON.stringify({
 					id_utilisateur: getUserId(),
 					id_exercice: exercice.id,
-					score: bonnesR,
+					score: soundTimes.current.length > 0
+						? Math.round((bonnesR / soundTimes.current.length) * 100)
+						: 0,
 				}),
 			});
 		}, DUREE_SECONDES * 1000);
@@ -206,13 +168,26 @@ const DetecterExercice = ({ exercice }: Props) => {
 
 	/* ── Écran résultats ── */
 	if (ecran === "resultats") {
+		const pct = total > 0 ? Math.round((bonnes / total) * 100) : 0;
 		return (
 			<div className="det-result">
 				<h1 className="det-result-score">
-					Vous avez {bonnes}/{total} bonne{bonnes > 1 ? "s" : ""} réponse{bonnes > 1 ? "s" : ""}.
+					{bonnes} / {total} bonne{bonnes > 1 ? "s" : ""} réponse{bonnes > 1 ? "s" : ""}
 				</h1>
-				<div className="det-result-illus">
-					<IllustrationEcoute />
+				<div className="ep-result-ring" aria-hidden="true">
+					<svg viewBox="0 0 120 120" width="180" height="180">
+						<circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10" />
+						<circle
+							cx="60" cy="60" r="50"
+							fill="none" stroke="#0D9488" strokeWidth="10"
+							strokeLinecap="round"
+							strokeDasharray={2 * Math.PI * 50}
+							strokeDashoffset={2 * Math.PI * 50 * (1 - pct / 100)}
+							transform="rotate(-90 60 60)"
+						/>
+						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">{pct}%</text>
+						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
+					</svg>
 				</div>
 				<p className="det-result-message">{getMessage(bonnes, total)}</p>
 				<div className="det-result-actions">

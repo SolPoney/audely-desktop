@@ -8,15 +8,17 @@ interface Props {
 	exercice: { id: number; titre: string; niveau: string };
 }
 
-type Ecran = "config" | "exercice" | "resultats";
-type TypeVoix = "homme" | "toutes" | "femme";
 type Duree = "court" | "moyen" | "long";
 
 const TOTAL = 5;
 
 const DUREES_MS: Record<Duree, number> = { court: 0.25, moyen: 0.7, long: 1.4 };
-
-const getCtx = () => new (window.AudioContext || (window as any).webkitAudioContext)();
+const DUREE_LABELS: Record<Duree, string> = { court: "Court", moyen: "Moyen", long: "Long" };
+const DUREE_SUB: Record<Duree, string> = {
+	court: "Son bref",
+	moyen: "Durée intermédiaire",
+	long: "Son étendu",
+};
 
 const jouerSon = (ctx: AudioContext, duree: number) => {
 	const osc = ctx.createOscillator();
@@ -49,8 +51,7 @@ const getMessage = (nb: number) => {
 
 const CourtMoyenLongExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
-	const [ecran, setEcran]                 = useState<Ecran>("config");
-	const [typeVoix, setTypeVoix]           = useState<TypeVoix>("toutes");
+	const [ecran, setEcran]                 = useState<"exercice" | "resultats">("exercice");
 	const [questionNum, setQuestionNum]     = useState(1);
 	const [dureeActuelle, setDureeActuelle] = useState<Duree>(tirerDuree);
 	const [reponse, setReponse]             = useState<Duree | null>(null);
@@ -60,7 +61,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 	const ctxRef = useRef<AudioContext | null>(null);
 
 	const jouer = async () => {
-		const ctx = getCtx();
+		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
 		await ctx.resume();
 		ctxRef.current = ctx;
 		jouerSon(ctx, DUREES_MS[dureeActuelle]);
@@ -76,7 +77,6 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (questionNum >= TOTAL) {
-			const finalScore = score + (feedback === "ok" ? 1 : 0);
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
 				method: "POST",
@@ -84,10 +84,9 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 				body: JSON.stringify({
 					id_utilisateur: getUserId(),
 					id_exercice: exercice.id,
-					score: Math.round((finalScore / TOTAL) * 100),
+					score: Math.round((score / TOTAL) * 100),
 				}),
 			});
-			setScore(finalScore);
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
@@ -123,55 +122,23 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 				</div>
 				<p className="det-result-message">{getMessage(score)}</p>
 				<div className="det-result-actions">
-					<button className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
-					<button className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>
-				</div>
-			</div>
-		);
-	}
-
-	/* ── Config ── */
-	if (ecran === "config") {
-		return (
-			<div className="rythme-page">
-				<button type="button" className="detecter-close" onClick={() => navigate("/dashboard")} aria-label="Fermer">
-					<X size={16} />
-				</button>
-				<div className="rythme-config-content">
-					<h1 className="rythme-titre">{exercice.titre}</h1>
-					<p className="rythme-sous-titre">Exercice</p>
-					<p className="rythme-description">Écoutez le son et indiquez s'il est court, moyen ou long.</p>
-					<div className="rythme-voix-selector" role="group">
-						{(["homme", "toutes", "femme"] as TypeVoix[]).map((v) => (
-							<button key={v} type="button"
-								className={`rythme-voix-btn${typeVoix === v ? " rythme-voix-btn--actif" : ""}`}
-								onClick={() => setTypeVoix(v)} aria-pressed={typeVoix === v}
-							>
-								<span aria-hidden="true" style={{ fontSize: "1.4rem" }}>{v === "homme" ? "🚹" : v === "toutes" ? "🚻" : "🚺"}</span>
-								<span style={{ whiteSpace: "pre-line" }}>{v === "homme" ? "Voix\nd'homme" : v === "toutes" ? "Toutes\nles voix" : "Voix\nde femme"}</span>
-							</button>
-						))}
-					</div>
-				</div>
-				<div className="rythme-footer">
-					<button type="button" className="rythme-btn-noir" onClick={() => setEcran("exercice")}>
-						Commencer l'exercice
-					</button>
+					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
+					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>
 				</div>
 			</div>
 		);
 	}
 
 	/* ── Exercice ── */
-	const DUREE_LABELS: Record<Duree, string> = { court: "Court", moyen: "Moyen", long: "Long" };
-
 	return (
 		<div className="rythme-page">
 			<div className="ep-topbar">
-				<button className="ep-close" onClick={() => navigate("/dashboard")} aria-label="Fermer">
+				<button type="button" className="ep-close" onClick={() => navigate(-1)} aria-label="Fermer">
 					<X size={18} strokeWidth={2.5} />
 				</button>
-				<div className="ep-progress" role="progressbar" aria-valuenow={questionNum} aria-valuemin={1} aria-valuemax={TOTAL} aria-label={`Question ${questionNum} sur ${TOTAL}`}>
+				<div className="ep-progress" role="progressbar"
+					aria-valuenow={questionNum} aria-valuemin={1} aria-valuemax={TOTAL}
+					aria-label={`Question ${questionNum} sur ${TOTAL}`}>
 					{Array.from({ length: TOTAL }).map((_, i) => (
 						<div key={i} className={`ep-progress-dash${i < questionNum - 1 ? " ep-progress-dash--actif" : i === questionNum - 1 ? " ep-progress-dash--current" : ""}`} />
 					))}
@@ -190,29 +157,45 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 				<p className="rythme-play-hint">{sonJoue ? "Appuyer pour réécouter" : "Appuyer pour écouter"}</p>
 			</div>
 
-			<div className="rythme-reponses" role="group" aria-label="Choisissez une réponse">
+			<div className="rythme-reponses rythme-reponses--compact" role="group" aria-label="Choisissez une réponse">
 				{(["court", "moyen", "long"] as Duree[]).map((d) => {
 					let cls = "rythme-reponse-card";
 					if (feedback) {
 						if (d === dureeActuelle)    cls += " rythme-reponse-card--correct";
 						else if (d === reponse)     cls += " rythme-reponse-card--incorrect";
-						else                        cls += "";
+					} else if (!sonJoue) {
+						cls += " rythme-reponse-card--locked";
 					} else if (d === reponse) {
 						cls += " rythme-reponse-card--select";
 					}
 					return (
 						<button key={d} type="button" className={cls}
-							onClick={() => !feedback && setReponse(d)}
-							disabled={!!feedback}
-							aria-pressed={reponse === d}
-						>
+							onClick={() => !feedback && sonJoue && setReponse(d)}
+							disabled={!sonJoue || !!feedback}
+							aria-pressed={reponse === d}>
 							<div className="rythme-reponse-icone" aria-hidden="true">
-								<div className="cml-barre-wrap">
-									<div className={`cml-barre cml-barre--${d}`} />
-								</div>
+								{d === "court" && (
+									<svg width="44" height="24" viewBox="0 0 44 24">
+										<path d="M18,12 Q20,4 22,12 Q24,20 26,12"
+											stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"/>
+									</svg>
+								)}
+								{d === "moyen" && (
+									<svg width="44" height="24" viewBox="0 0 44 24">
+										<path d="M8,12 Q13,2 18,12 Q23,22 28,12 Q33,2 38,12"
+											stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"/>
+									</svg>
+								)}
+								{d === "long" && (
+									<svg width="44" height="24" viewBox="0 0 44 24">
+										<path d="M1,12 Q7,2 12,12 Q17,22 22,12 Q27,2 32,12 Q37,22 42,12 Q43,8 44,12"
+											stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"/>
+									</svg>
+								)}
 							</div>
 							<div className="rythme-reponse-body">
 								<p className="rythme-reponse-label">{DUREE_LABELS[d]}</p>
+								<p className="rythme-reponse-sub">{DUREE_SUB[d]}</p>
 							</div>
 						</button>
 					);
@@ -232,9 +215,9 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 			) : (
 				<div className="rythme-footer">
 					<button type="button"
-						className={`rythme-btn-gris${reponse ? " rythme-btn-gris--actif" : ""}`}
-						onClick={valider} disabled={!reponse || !sonJoue}
-					>
+						className={`rythme-btn-gris${reponse && sonJoue ? " rythme-btn-gris--actif" : ""}`}
+						onClick={valider}
+						disabled={!reponse || !sonJoue}>
 						Valider
 					</button>
 				</div>

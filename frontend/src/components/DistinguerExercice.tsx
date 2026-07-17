@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { X, Equal, Divide } from "lucide-react";
+import { X, Equal, Divide, ChevronRight } from "lucide-react";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
 
@@ -9,15 +8,9 @@ interface Props {
 	exercice: { id: number; titre: string; niveau: string };
 }
 
-type Ecran = "config" | "exercice";
-type TypeVoix = "homme" | "toutes" | "femme";
 type Reponse = "identique" | "different";
 
 const TOTAL_QUESTIONS = 5;
-
-/* ——— Génération audio ——— */
-const getCtx = () =>
-	new (window.AudioContext || (window as any).webkitAudioContext)();
 
 const jouerSon = (ctx: AudioContext, frequence: number) => {
 	const osc = ctx.createOscillator();
@@ -35,16 +28,12 @@ const jouerSon = (ctx: AudioContext, frequence: number) => {
 	osc.stop(t + 1);
 };
 
-/* Fréquences disponibles pour varier les sons */
 const FREQUENCES = [330, 392, 440, 523, 587, 660, 784];
 
 const tirerQuestion = (): { sonA: number; sonB: number; reponseCorrecte: Reponse } => {
 	const freqA = FREQUENCES[Math.floor(Math.random() * FREQUENCES.length)];
 	const identique = Math.random() > 0.5;
-	if (identique) {
-		return { sonA: freqA, sonB: freqA, reponseCorrecte: "identique" };
-	}
-	// Choisir une fréquence différente garantie
+	if (identique) return { sonA: freqA, sonB: freqA, reponseCorrecte: "identique" };
 	let freqB = freqA;
 	while (freqB === freqA) {
 		freqB = FREQUENCES[Math.floor(Math.random() * FREQUENCES.length)];
@@ -52,20 +41,28 @@ const tirerQuestion = (): { sonA: number; sonB: number; reponseCorrecte: Reponse
 	return { sonA: freqA, sonB: freqB, reponseCorrecte: "different" };
 };
 
+const getMessage = (nb: number) => {
+	const r = nb / TOTAL_QUESTIONS;
+	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
+	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
+	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
+	return "Ne vous découragez pas, réessayez !";
+};
+
 const DistinguerExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
-	const [ecran, setEcran] = useState<Ecran>("config");
-	const [typeVoix, setTypeVoix] = useState<TypeVoix>("toutes");
-	const [question, setQuestion] = useState(tirerQuestion());
+	const [ecran, setEcran]           = useState<"exercice" | "resultats">("exercice");
+	const [question, setQuestion]     = useState(tirerQuestion());
 	const [questionNum, setQuestionNum] = useState(1);
-	const [reponse, setReponse] = useState<Reponse | null>(null);
-	const [sonAJoue, setSonAJoue] = useState(false);
-	const [sonBJoue, setSonBJoue] = useState(false);
-	const scoresRef = useRef<boolean[]>([]);
+	const [reponse, setReponse]       = useState<Reponse | null>(null);
+	const [feedback, setFeedback]     = useState<"ok" | "ko" | null>(null);
+	const [score, setScore]           = useState(0);
+	const [sonAJoue, setSonAJoue]     = useState(false);
+	const [sonBJoue, setSonBJoue]     = useState(false);
 	const ctxRef = useRef<AudioContext | null>(null);
 
 	const getCtxResume = async () => {
-		const ctx = getCtx();
+		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
 		await ctx.resume();
 		ctxRef.current = ctx;
 		return ctx;
@@ -83,201 +80,173 @@ const DistinguerExercice = ({ exercice }: Props) => {
 		setSonBJoue(true);
 	};
 
-	const valider = async () => {
-		if (!reponse) return;
-		scoresRef.current.push(reponse === question.reponseCorrecte);
+	const valider = () => {
+		if (!reponse || feedback) return;
+		const correct = reponse === question.reponseCorrecte;
+		if (correct) setScore(s => s + 1);
+		setFeedback(correct ? "ok" : "ko");
+	};
 
-		if (questionNum < TOTAL_QUESTIONS) {
-			setQuestionNum((n) => n + 1);
-			setQuestion(tirerQuestion());
-			setReponse(null);
-			setSonAJoue(false);
-			setSonBJoue(false);
-		} else {
-			const nb = scoresRef.current.filter(Boolean).length;
+	const suivant = async () => {
+		if (questionNum >= TOTAL_QUESTIONS) {
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
+				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
 				body: JSON.stringify({
 					id_utilisateur: getUserId(),
 					id_exercice: exercice.id,
-					score: Math.round((nb / TOTAL_QUESTIONS) * 100),
+					score: Math.round((score / TOTAL_QUESTIONS) * 100),
 				}),
 			});
-			if (nb === TOTAL_QUESTIONS) toast.success("Parfait !", { description: `${nb}/${TOTAL_QUESTIONS} bonnes réponses !` });
-			else if (nb >= 3) toast.success("Bien joué !", { description: `${nb}/${TOTAL_QUESTIONS} bonnes réponses.` });
-			else toast("Continuez !", { description: `${nb}/${TOTAL_QUESTIONS} bonnes réponses.` });
-			navigate("/dashboard");
+			setEcran("resultats");
+		} else {
+			setQuestionNum(n => n + 1);
+			setQuestion(tirerQuestion());
+			setReponse(null);
+			setFeedback(null);
+			setSonAJoue(false);
+			setSonBJoue(false);
 		}
 	};
 
-	/* ——— Écran config ——— */
-	if (ecran === "config") {
+	/* ── Résultats ── */
+	if (ecran === "resultats") {
+		const pct = Math.round((score / TOTAL_QUESTIONS) * 100);
 		return (
-			<div className="rythme-page">
-				<button className="detecter-close" onClick={() => navigate("/dashboard")} aria-label="Fermer">
-					<X size={16} />
-				</button>
-
-				<div className="rythme-config-content">
-					<h1 className="rythme-titre">{exercice.titre}</h1>
-					<p className="rythme-sous-titre">Exercice 1</p>
-
-					<div className="rythme-badges">
-						<div className="rythme-badge-item">
-							<span className="rythme-badge-icon rythme-badge-icon--teal">♩♪</span>
-							<span>Distinguer</span>
-						</div>
-						<div className="rythme-badge-item">
-							<span className="rythme-badge-icon">♩♩♩</span>
-							<span>{exercice.niveau}</span>
-						</div>
-					</div>
-
-					<p className="rythme-description">
-						Vous allez entendre deux sons : il vous faudra dire s'ils sont pareils ou différents. Entraînez-vous à différencier des sons.
-					</p>
-
-					<div className="rythme-voix-selector" role="group" aria-label="Filtre de voix">
-						{(["homme", "toutes", "femme"] as TypeVoix[]).map((v) => (
-							<button
-								key={v}
-								type="button"
-								className={`rythme-voix-btn${typeVoix === v ? " rythme-voix-btn--actif" : ""}`}
-								onClick={() => setTypeVoix(v)}
-								aria-pressed={typeVoix === v}
-							>
-								<span aria-hidden="true" style={{ fontSize: "1.4rem" }}>
-									{v === "homme" ? "🚹" : v === "toutes" ? "🚻" : "🚺"}
-								</span>
-								<span style={{ whiteSpace: "pre-line" }}>
-									{v === "homme" ? "Voix\nd'homme" : v === "toutes" ? "Toutes\nles voix" : "Voix\nde femme"}
-								</span>
-							</button>
-						))}
-					</div>
+			<div className="det-result">
+				<h1 className="det-result-score">
+					{score} / {TOTAL_QUESTIONS} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
+				</h1>
+				<div className="ep-result-ring" aria-hidden="true">
+					<svg viewBox="0 0 120 120" width="180" height="180">
+						<circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10" />
+						<circle
+							cx="60" cy="60" r="50"
+							fill="none" stroke="#0D9488" strokeWidth="10"
+							strokeLinecap="round"
+							strokeDasharray={2 * Math.PI * 50}
+							strokeDashoffset={2 * Math.PI * 50 * (1 - pct / 100)}
+							transform="rotate(-90 60 60)"
+						/>
+						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">{pct}%</text>
+						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
+					</svg>
 				</div>
-
-				<div className="rythme-footer">
-					<button
-						type="button"
-						className="rythme-btn-noir"
-						onClick={() => setEcran("exercice")}
-					>
-						Commencer l'exercice
-					</button>
+				<p className="det-result-message">{getMessage(score)}</p>
+				<div className="det-result-actions">
+					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
+					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>
 				</div>
 			</div>
 		);
 	}
 
-	/* ——— Écran exercice ——— */
+	/* ── Exercice ── */
+	const peutEcouter = sonAJoue && sonBJoue;
+
 	return (
 		<div className="rythme-page">
-			<div className="rythme-topbar">
-				<button
-					className="detecter-close detecter-close--inline"
-					onClick={() => navigate("/dashboard")}
-					aria-label="Fermer"
-				>
-					<X size={16} />
+			<div className="ep-topbar">
+				<button type="button" className="ep-close" onClick={() => navigate(-1)} aria-label="Fermer">
+					<X size={18} strokeWidth={2.5} />
 				</button>
-
-				<div
-					className="rythme-progress"
-					role="progressbar"
-					aria-valuenow={questionNum}
-					aria-valuemin={1}
-					aria-valuemax={TOTAL_QUESTIONS}
-					aria-label={`Question ${questionNum} sur ${TOTAL_QUESTIONS}`}
-				>
+				<div className="ep-progress" role="progressbar"
+					aria-valuenow={questionNum} aria-valuemin={1} aria-valuemax={TOTAL_QUESTIONS}
+					aria-label={`Question ${questionNum} sur ${TOTAL_QUESTIONS}`}>
 					{Array.from({ length: TOTAL_QUESTIONS }).map((_, i) => (
-						<div
-							key={i}
-							className={`rythme-progress-dash${i < questionNum ? " rythme-progress-dash--actif" : ""}`}
-						/>
+						<div key={i} className={`ep-progress-dash${i < questionNum - 1 ? " ep-progress-dash--actif" : i === questionNum - 1 ? " ep-progress-dash--current" : ""}`} />
 					))}
 				</div>
-
-				<div className="rythme-timer-icon" aria-hidden="true">
-					<span style={{ fontSize: "0.9rem" }}>♩♪</span>
-				</div>
+				<span className="ep-progress-label">{questionNum} / {TOTAL_QUESTIONS}</span>
 			</div>
 
-			<div className="rythme-config-content">
-				<h2 className="rythme-titre rythme-titre--sm">
-					Écoutez ces sons.{"\n"}Sont-ils différents ou identiques ?
-				</h2>
+			<p className="rythme-instruction">IDENTIQUE OU DIFFÉRENT ?</p>
 
-				{/* Deux boutons play côte à côte */}
-				<div className="distinguer-plays">
-					<div className="distinguer-play-item">
-						<button
-							type="button"
-							className={`rythme-play-sm${sonAJoue ? " rythme-play-sm--joue" : ""}`}
-							onClick={jouerSonA}
-							aria-label="Écouter le son A"
-						>
-							<span aria-hidden="true">▶</span>
-						</button>
-						<p className="rythme-prepa-label">Son A</p>
-					</div>
-
-					<div className="distinguer-play-item">
-						<button
-							type="button"
-							className={`rythme-play-sm${sonBJoue ? " rythme-play-sm--joue" : ""}`}
-							onClick={jouerSonB}
-							aria-label="Écouter le son B"
-						>
-							<span aria-hidden="true">▶</span>
-						</button>
-						<p className="rythme-prepa-label">Son B</p>
-					</div>
-				</div>
-
-				{/* Cartes réponses */}
-				<div className="rythme-reponses" role="group" aria-label="Choisissez une réponse">
-					<button
-						type="button"
-						className={`rythme-reponse-card${reponse === "identique" ? " rythme-reponse-card--select" : ""}`}
-						onClick={() => setReponse("identique")}
-						aria-pressed={reponse === "identique"}
-					>
-						<div className="rythme-reponse-icone">
-							<Equal size={22} color={reponse === "identique" ? "var(--color-primary)" : "var(--color-text-muted)"} />
-						</div>
-						<span className="rythme-reponse-label">Identiques</span>
+			{/* Deux boutons play */}
+			<div className="distinguer-plays">
+				<div className="distinguer-play-item">
+					<button type="button"
+						className={`rythme-big-play distinguer-play-btn${sonAJoue ? " distinguer-play-btn--joue" : ""}`}
+						onClick={jouerSonA}
+						aria-label="Écouter le son A">
+						<svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+							<polygon points="5,3 19,12 5,21" />
+						</svg>
 					</button>
-
-					<button
-						type="button"
-						className={`rythme-reponse-card${reponse === "different" ? " rythme-reponse-card--select" : ""}`}
-						onClick={() => setReponse("different")}
-						aria-pressed={reponse === "different"}
-					>
-						<div className="rythme-reponse-icone">
-							<Divide size={22} color={reponse === "different" ? "var(--color-primary)" : "var(--color-text-muted)"} />
-						</div>
-						<span className="rythme-reponse-label">Différents</span>
+					<p className="rythme-play-hint" style={{ fontWeight: 700, fontSize: "1rem" }}>Son A</p>
+				</div>
+				<div className="distinguer-play-item">
+					<button type="button"
+						className={`rythme-big-play distinguer-play-btn${sonBJoue ? " distinguer-play-btn--joue" : ""}`}
+						onClick={jouerSonB}
+						aria-label="Écouter le son B">
+						<svg width="26" height="26" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+							<polygon points="5,3 19,12 5,21" />
+						</svg>
 					</button>
+					<p className="rythme-play-hint" style={{ fontWeight: 700, fontSize: "1rem" }}>Son B</p>
 				</div>
 			</div>
 
-			<div className="rythme-footer">
-				<button
-					type="button"
-					className={`rythme-btn-gris${reponse ? " rythme-btn-gris--actif" : ""}`}
-					onClick={valider}
-					disabled={!reponse}
-				>
-					Valider
-				</button>
+			{!peutEcouter && (
+				<p className="distinguer-hint">Écoutez les deux sons avant de répondre</p>
+			)}
+
+			<div className="rythme-reponses rythme-reponses--row" role="group" aria-label="Choisissez une réponse">
+				{([
+					{ val: "identique" as Reponse, label: "Identiques", sub: "Les deux sons sont pareils", Icon: Equal },
+					{ val: "different"  as Reponse, label: "Différents",  sub: "Les sons ne sont pas pareils",  Icon: Divide },
+				]).map(({ val, label, sub, Icon }) => {
+					let cls = "rythme-reponse-card";
+					if (feedback) {
+						if (val === question.reponseCorrecte) cls += " rythme-reponse-card--correct";
+						else if (val === reponse)             cls += " rythme-reponse-card--incorrect";
+					} else if (!peutEcouter) {
+						cls += " rythme-reponse-card--locked";
+					} else if (reponse === val) {
+						cls += " rythme-reponse-card--select";
+					}
+					return (
+						<button key={val} type="button" className={cls}
+							onClick={() => !feedback && peutEcouter && setReponse(val)}
+							disabled={!peutEcouter || !!feedback}
+							aria-pressed={reponse === val}>
+							<div className="rythme-reponse-icone" aria-hidden="true">
+								<Icon size={40} strokeWidth={2.5}
+									color={reponse === val || (feedback && val === question.reponseCorrecte) ? "#0D9488" : "#64748B"} />
+							</div>
+							<div className="rythme-reponse-body">
+								<p className="rythme-reponse-label">{label}</p>
+								<p className="rythme-reponse-sub">{sub}</p>
+							</div>
+						</button>
+					);
+				})}
 			</div>
+
+			{feedback ? (
+				<div className={`ep-footer-feedback ${feedback === "ok" ? "ep-footer-feedback--ok" : "ep-footer-feedback--ko"}`}>
+					<p className="ep-footer-feedback-label">
+						{feedback === "ok"
+							? "Bonne réponse !"
+							: `C'était : ${question.reponseCorrecte === "identique" ? "Identiques" : "Différents"}`}
+					</p>
+					<button type="button" className="ep-btn-suivant-inline" onClick={suivant}>
+						{questionNum >= TOTAL_QUESTIONS ? "Voir mon score" : "Continuer"}
+						<ChevronRight size={18} strokeWidth={2.5} />
+					</button>
+				</div>
+			) : (
+				<div className="rythme-footer">
+					<button type="button"
+						className={`rythme-btn-gris${reponse && peutEcouter ? " rythme-btn-gris--actif" : ""}`}
+						onClick={valider}
+						disabled={!reponse || !peutEcouter}>
+						Valider
+					</button>
+				</div>
+			)}
 		</div>
 	);
 };

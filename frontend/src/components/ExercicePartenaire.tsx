@@ -32,13 +32,44 @@ type Question = {
 	reponse: string;      // la bonne réponse
 	contexte?: string;    // indice / thème
 	pitch?: number;       // hauteur vocale (0.1 = grave, 2.0 = aigu) — Web Speech API
+	volume?: number;      // volume de lecture (0.0–1.0) — fort/faible
 };
 
 function genererQuestions(contenu: any): Question[] {
 	const questions: Question[] = [];
 
+	// --- Fort ou Faible (phrases string[] + "fort" dans les instructions) ---
+	if (contenu?.phrases && typeof contenu.phrases[0] === "string"
+		&& contenu.instructions?.toLowerCase().includes("fort")) {
+		for (const phrase of contenu.phrases as string[]) {
+			const estFort = Math.random() > 0.5;
+			questions.push({
+				affichage: "......",
+				tts: phrase,
+				choix: ["Fort", "Faible"],
+				reponse: estFort ? "Fort" : "Faible",
+				contexte: "Cette phrase était-elle forte ou douce ?",
+				volume: estFort ? 1.0 : 0.12,
+			});
+		}
+	}
+
+	// --- Quel mot est accentué (phrases avec mots_cles) ---
+	else if (contenu?.phrases && contenu.phrases[0]?.mots_cles) {
+		for (const item of contenu.phrases) {
+			const reponse = item.mots_cles[Math.floor(Math.random() * item.mots_cles.length)];
+			questions.push({
+				affichage: item.phrase,
+				tts: item.phrase,
+				choix: [...item.mots_cles].sort(() => Math.random() - 0.5),
+				reponse,
+				contexte: "Quel mot a été accentué ?",
+			});
+		}
+	}
+
 	// --- Compléter une phrase / Le bon contexte ---
-	if (contenu?.phrases) {
+	else if (contenu?.phrases) {
 		for (const item of contenu.phrases) {
 			if (item.alternatives) {
 				const reponse = item.alternatives[Math.floor(Math.random() * item.alternatives.length)];
@@ -286,19 +317,38 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
-	// --- Séries ---
-	if (contenu?.series) {
-		for (const s of contenu.series) {
-			const nb = s.sons ?? s;
+	// --- Compter les syllabes (mots réels avec nb de syllabes) ---
+	if (contenu?.syllabes) {
+		for (const item of contenu.syllabes) {
 			questions.push({
-				affichage: `${nb} son${nb > 1 ? "s" : ""}`,
-				tts: nb === 1 ? "un son" : "deux sons",
-				choix: ["1 son", "2 sons"],
-				reponse: nb === 1 ? "1 son" : "2 sons",
-				contexte: "Combien de sons avez-vous entendu ?",
+				affichage: "......",
+				tts: item.mot,
+				choix: ["1 syllabe", "2 syllabes", "3 syllabes"],
+				reponse: `${item.nb} syllabe${item.nb > 1 ? "s" : ""}`,
+				contexte: "Combien de syllabes avez-vous entendu ?",
 			});
 		}
 	}
+
+	// --- Séries de syllabes ---
+	if (contenu?.series) {
+		const allNbs = contenu.series.map((s: any) => s.sons ?? s).filter((n: any) => typeof n === "number");
+		const maxNb = Math.max(...allNbs);
+		const choix = Array.from({ length: maxNb }, (_, i) => `${i + 1} syllabe${i + 1 > 1 ? "s" : ""}`);
+		for (const s of contenu.series) {
+			const nb: number = s.sons ?? s;
+			// "ba. ba. ba." — pauses entre chaque syllabe
+			const tts = Array(nb).fill("ba").join(". ");
+			questions.push({
+				affichage: "......",
+				tts,
+				choix,
+				reponse: `${nb} syllabe${nb > 1 ? "s" : ""}`,
+				contexte: "Combien de syllabes avez-vous entendu ?",
+			});
+		}
+	}
+
 
 	return questions.slice(0, 20);
 }
@@ -324,22 +374,23 @@ const decouper = (texte: string): string[] => {
 	return morceaux;
 };
 
-const lireSequence = (morceaux: string[], index: number, onEnd?: () => void) => {
+const lireSequence = (morceaux: string[], index: number, volume: number, onEnd?: () => void) => {
 	if (lectureAnnulee || index >= morceaux.length) {
 		if (onEnd) onEnd();
 		return;
 	}
 	const url = `${API_URL}/api/tts?q=${encodeURIComponent(morceaux[index])}`;
 	const audio = new Audio(url);
+	audio.volume = volume;
 	audioEnCours = audio;
-	audio.onended = () => lireSequence(morceaux, index + 1, onEnd);
+	audio.onended = () => lireSequence(morceaux, index + 1, volume, onEnd);
 	audio.play().catch(() => {
 		if (lectureAnnulee) return;
-		lireSequence(morceaux, index + 1, onEnd);
+		lireSequence(morceaux, index + 1, volume, onEnd);
 	});
 };
 
-const lire = (texte: string, onEnd?: () => void, pitch?: number) => {
+const lire = (texte: string, onEnd?: () => void, pitch?: number, volume = 1.0) => {
 	lectureAnnulee = false;
 	if (audioEnCours) {
 		audioEnCours.pause();
@@ -358,7 +409,7 @@ const lire = (texte: string, onEnd?: () => void, pitch?: number) => {
 		return;
 	}
 	const morceaux = decouper(texte);
-	lireSequence(morceaux, 0, onEnd);
+	lireSequence(morceaux, 0, volume, onEnd);
 };
 
 const arreterLecture = () => {
@@ -393,7 +444,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 
 	const jouer = useCallback(() => {
 		if (!question) return;
-		lire(question.tts, undefined, question.pitch);
+		lire(question.tts, undefined, question.pitch, question.volume);
 		setAEcoute(true);
 	}, [question]);
 
@@ -402,7 +453,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 		if (ecran === "question" && question) {
 			setAEcoute(false);
 			setTimeout(() => {
-				lire(question.tts, undefined, question.pitch);
+				lire(question.tts, undefined, question.pitch, question.volume);
 				setAEcoute(true);
 			}, 400);
 		}
@@ -417,7 +468,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			const pct = Math.round((score + (isCorrect ? 1 : 0)) / total * 100);
+			const pct = Math.round(score / total * 100);
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
 				method: "POST",
@@ -434,6 +485,10 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 
 	/* ── Instructions ── */
 	if (ecran === "instructions") {
+		const contenuParsed = typeof exercice.contenu === "string"
+			? JSON.parse(exercice.contenu)
+			: exercice.contenu;
+
 		return (
 			<div className="ep-page">
 				<div className="ep-topbar">
@@ -441,29 +496,49 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 						<X size={18} strokeWidth={2.5} />
 					</button>
 				</div>
+
 				<div className="ep-instructions-content">
-					<h1 className="ep-titre">{exercice.titre}</h1>
-					<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
-					<div className="ep-instructions-bloc">
-						<p className="ep-instructions-head">Comment ça marche</p>
-						<p className="ep-instructions-texte">
-							L'app joue le rôle du locuteur et vous présente les énoncés un par un.
-							Écoutez, puis sélectionnez la bonne réponse parmi les choix proposés.
-						</p>
+					<div className="ep-instructions-icon" aria-hidden="true">
+						<Volume2 size={36} strokeWidth={1.6} />
 					</div>
-					{exercice.contenu?.instructions && (
-						<div className="ep-instructions-bloc ep-instructions-bloc--partenaire">
-							<p className="ep-instructions-head">Objectif de l'exercice</p>
-							<p className="ep-instructions-texte">{exercice.contenu.instructions}</p>
+
+					<div className="ep-instructions-header">
+						<h1 className="ep-titre">{exercice.titre}</h1>
+						<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+					</div>
+
+					<div className="ep-instructions-steps">
+						<div className="ep-instructions-step">
+							<div className="ep-step-num" aria-hidden="true">1</div>
+							<div className="ep-step-body">
+								<p className="ep-step-title">Écoutez</p>
+								<p className="ep-step-desc">L'app énonce les phrases — réécoutez autant de fois que nécessaire.</p>
+							</div>
 						</div>
+						<div className="ep-instructions-step">
+							<div className="ep-step-num" aria-hidden="true">2</div>
+							<div className="ep-step-body">
+								<p className="ep-step-title">Répondez</p>
+								<p className="ep-step-desc">
+									{contenuParsed?.instructions
+										? contenuParsed.instructions
+										: "Sélectionnez la bonne réponse parmi les choix proposés."}
+								</p>
+							</div>
+						</div>
+					</div>
+
+					{total > 0 && (
+						<p className="ep-instructions-count">
+							{total} question{total > 1 ? "s" : ""}
+						</p>
 					)}
-					<p className="ep-instructions-texte" style={{ textAlign: "center", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-						{total} question{total > 1 ? "s" : ""} au total
-					</p>
 				</div>
+
 				<div className="ep-footer">
 					<button className="ep-btn-primary" onClick={() => setEcran("question")}>
-						Commencer
+						C'est parti !
+						<ChevronRight size={20} strokeWidth={2.5} />
 					</button>
 				</div>
 			</div>

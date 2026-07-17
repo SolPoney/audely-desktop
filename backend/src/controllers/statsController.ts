@@ -130,6 +130,11 @@ export const getStats = async (req: Request, res: Response) => {
     const facileTotal = (facileTotalRes as any[])[0].total;
     const moyenNb = (moyenRes as any[])[0].nb;
 
+    // Est-ce que l'utilisateur a fait un exercice aujourd'hui ?
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const questDuJour = (jours as any[]).length > 0 &&
+      new Date((jours as any[])[0].jour).toISOString().slice(0, 10) === todayStr;
+
     const badges = [
       {
         id: 'premier_pas',
@@ -144,20 +149,6 @@ export const getStats = async (req: Request, res: Response) => {
         titre: 'Oreille d\'or',
         description: 'Obtenez 100% sur un exercice',
         unlocked: maxScore >= 100,
-      },
-      {
-        id: 'serie_3',
-        emoji: '🔥',
-        titre: 'Régulier',
-        description: '3 jours consécutifs de pratique',
-        unlocked: streak >= 3,
-      },
-      {
-        id: 'serie_7',
-        emoji: '⚡',
-        titre: 'Acharné',
-        description: '7 jours consécutifs de pratique',
-        unlocked: streak >= 7,
       },
       {
         id: 'dix_sessions',
@@ -180,6 +171,15 @@ export const getStats = async (req: Request, res: Response) => {
         description: 'Commencez les exercices Moyen',
         unlocked: moyenNb >= 1,
       },
+      // Paliers de série
+      { id: 'serie_3',   emoji: '🔥', titre: 'Star',          description: '3 jours consécutifs',   unlocked: streak >= 3   },
+      { id: 'serie_5',   emoji: '🔥', titre: 'Superstar',     description: '5 jours consécutifs',   unlocked: streak >= 5   },
+      { id: 'serie_7',   emoji: '⚡', titre: 'Champion',      description: '7 jours consécutifs',   unlocked: streak >= 7   },
+      { id: 'serie_14',  emoji: '⚡', titre: 'Enflammé',      description: '14 jours consécutifs',  unlocked: streak >= 14  },
+      { id: 'serie_31',  emoji: '🏅', titre: 'Icône',         description: '31 jours consécutifs',  unlocked: streak >= 31  },
+      { id: 'serie_50',  emoji: '🥇', titre: 'Éminence',      description: '50 jours consécutifs',  unlocked: streak >= 50  },
+      { id: 'serie_100', emoji: '🛡️', titre: 'Invincible',    description: '100 jours consécutifs', unlocked: streak >= 100 },
+      { id: 'serie_365', emoji: '🌟', titre: 'Interstellaire', description: '365 jours consécutifs', unlocked: streak >= 365 },
     ];
 
     // 7. Historique des 20 dernières sessions pour le graphique
@@ -196,6 +196,7 @@ export const getStats = async (req: Request, res: Response) => {
       parType,
       historique,
       streak,
+      questDuJour,
       xp: totalXP,
       niveau: niveauInfo,
       badges,
