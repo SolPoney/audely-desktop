@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import LoginPage from "./pages/LoginPage";
@@ -12,6 +13,13 @@ import QueteDuJourPage from "./pages/QueteDuJourPage";
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
+  // Initialise le thème dès le premier rendu sur n'importe quelle page
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") as "light" | "dark" | null;
+    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", saved ?? preferred);
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster position="bottom-right" richColors />
