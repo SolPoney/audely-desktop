@@ -49,7 +49,7 @@ function genererQuestions(contenu: any): Question[] {
 				choix: ["Fort", "Faible"],
 				reponse: estFort ? "Fort" : "Faible",
 				contexte: "Cette phrase était-elle forte ou douce ?",
-				volume: estFort ? 1.0 : 0.12,
+				volume: estFort ? 1.0 : 0.06,
 			});
 		}
 	}
