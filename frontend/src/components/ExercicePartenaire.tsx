@@ -158,7 +158,8 @@ function genererQuestions(contenu: any): Question[] {
 	}
 
 	// --- Groupes de mots (court_moyen_long) : string[][] ---
-	if (contenu?.groupes && Array.isArray(contenu.groupes[0]) && !contenu.groupes[0]?.questions) {
+	// Si groupes[0] est un tableau (pas un objet comprendre), on traite comme mots
+	if (contenu?.groupes && Array.isArray(contenu.groupes[0])) {
 		for (const groupe of contenu.groupes) {
 			const reponse = groupe[Math.floor(Math.random() * groupe.length)];
 			questions.push({
