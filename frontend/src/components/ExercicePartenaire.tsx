@@ -32,6 +32,7 @@ type Question = {
 	contexte?: string;    // indice / thème
 	pitch?: number;       // hauteur vocale (0.1 = grave, 2.0 = aigu) — Web Speech API
 	volume?: number;      // volume de lecture (0.0–1.0) — fort/faible
+	masquerAffichage?: boolean; // cache la phrase dans la carte (comprendre)
 };
 
 function genererQuestions(contenu: any): Question[] {
@@ -150,6 +151,7 @@ function genererQuestions(contenu: any): Question[] {
 					choix: ["J'ai répété correctement", "Je n'ai pas réussi"],
 					reponse: "J'ai répété correctement",
 					contexte: groupe.contexte,
+					masquerAffichage: true,
 				});
 			}
 		}
@@ -635,7 +637,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 						Écouter
 					</button>
 
-					{question.affichage !== "......" && question.choix[0] !== "J'ai répété correctement" && (
+					{question.affichage !== "......" && !question.masquerAffichage && (
 						<p className="ep-phrase">{question.affichage}</p>
 					)}
 				</div>
