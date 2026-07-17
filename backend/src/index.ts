@@ -22,6 +22,8 @@ app.use("/api", resultatRoutes)
 app.use('/api', ttsRoutes)
 app.use('/api', statsRoutes)
 
+app.get('/api/ping', (_req, res) => res.json({ ok: true }));
+
 app.get('/api/protected', verifyToken, (req, res) => {
   res.json({ message: 'Accès autorisé', user: (req as any).user });
 });
