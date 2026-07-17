@@ -140,8 +140,23 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
-	// --- Groupes de mots ---
-	if (contenu?.groupes) {
+	// --- Groupes de questions (comprendre) : { contexte, questions[] } ---
+	if (contenu?.groupes && contenu.groupes[0]?.questions) {
+		for (const groupe of contenu.groupes) {
+			for (const question of groupe.questions as string[]) {
+				questions.push({
+					affichage: question,
+					tts: question,
+					choix: ["J'ai répété correctement", "Je n'ai pas réussi"],
+					reponse: "J'ai répété correctement",
+					contexte: groupe.contexte,
+				});
+			}
+		}
+	}
+
+	// --- Groupes de mots (court_moyen_long) : string[][] ---
+	if (contenu?.groupes && Array.isArray(contenu.groupes[0]) && !contenu.groupes[0]?.questions) {
 		for (const groupe of contenu.groupes) {
 			const reponse = groupe[Math.floor(Math.random() * groupe.length)];
 			questions.push({
