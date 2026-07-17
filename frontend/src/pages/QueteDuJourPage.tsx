@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { Zap, CheckCircle2, Lock, ChevronRight, ArrowLeft } from "lucide-react";
+import { Zap, CheckCircle2, Lock, ChevronLeft } from "lucide-react";
 
 interface ExerciceQuete {
 	id: number;
@@ -11,17 +11,23 @@ interface ExerciceQuete {
 	nb_revisions: number;
 }
 
-const NIVEAU_COLOR: Record<string, string> = {
-	facile:    "#16a34a",
-	moyen:     "#d97706",
-	difficile: "#dc2626",
+const NIVEAU_CONFIG: Record<string, { couleur: string; label: string; barres: number }> = {
+	facile:    { couleur: "#0D9488", label: "Facile",    barres: 1 },
+	moyen:     { couleur: "#D97706", label: "Moyen",     barres: 2 },
+	difficile: { couleur: "#DC2626", label: "Difficile", barres: 3 },
 };
 
-const NIVEAU_LABEL: Record<string, string> = {
-	facile:    "Facile",
-	moyen:     "Moyen",
-	difficile: "Difficile",
-};
+const NiveauBarres = ({ barres, couleur }: { barres: number; couleur: string }) => (
+	<div className="quete-card-barres" aria-hidden="true">
+		{[1, 2, 3].map(b => (
+			<div
+				key={b}
+				className="quete-card-barre"
+				style={{ height: `${b * 7 + 4}px`, background: couleur, opacity: b <= barres ? 1 : 0.15 }}
+			/>
+		))}
+	</div>
+);
 
 const QueteDuJourPage = () => {
 	const navigate = useNavigate();
@@ -57,11 +63,9 @@ const QueteDuJourPage = () => {
 	if (exercices.length === 0) {
 		return (
 			<div className="quete-page">
-				<div className="quete-back-btn-wrap">
-					<button type="button" className="parcours-back-btn" onClick={() => navigate("/dashboard")} aria-label="Retour">
-						<ArrowLeft size={20} strokeWidth={2.5} />
-					</button>
-				</div>
+				<button type="button" className="parcours-back-btn" onClick={() => navigate("/dashboard")} aria-label="Retour">
+					<ChevronLeft size={22} strokeWidth={2.5} />
+				</button>
 				<div className="quete-empty">
 					<p className="quete-empty-icon">🌱</p>
 					<p className="quete-empty-titre">Revenez demain !</p>
@@ -77,11 +81,9 @@ const QueteDuJourPage = () => {
 		<div className="quete-page">
 
 			{/* Bouton retour */}
-			<div className="quete-back-btn-wrap">
-				<button type="button" className="parcours-back-btn" onClick={() => navigate("/dashboard")} aria-label="Retour">
-					<ArrowLeft size={20} strokeWidth={2.5} />
-				</button>
-			</div>
+			<button type="button" className="parcours-back-btn" onClick={() => navigate("/dashboard")} aria-label="Retour">
+				<ChevronLeft size={22} strokeWidth={2.5} />
+			</button>
 
 			{/* Hero */}
 			<div className="quete-hero">
@@ -93,7 +95,6 @@ const QueteDuJourPage = () => {
 					{complete ? "Félicitations, quête accomplie !" : `${nbFaits} / ${exercices.length} exercices réalisés`}
 				</p>
 
-				{/* Barre de progression */}
 				<div className="quete-pbar-wrap">
 					<div
 						className="quete-pbar"
@@ -109,78 +110,75 @@ const QueteDuJourPage = () => {
 				</div>
 			</div>
 
-			{/* Liste */}
-			<div className="quete-list">
-				{exercices.map((exo, i) => {
-					const estFait       = i < nbFaits;
-					const estCourant    = i === nbFaits && !complete;
-					const estVerrouille = i > nbFaits && !complete;
+			{/* Grille de cartes */}
+			<main className="quete-main">
+				<ul className="quete-grid" aria-label="Exercices de la quête">
+					{exercices.map((exo, i) => {
+						const estFait       = i < nbFaits;
+						const estCourant    = i === nbFaits && !complete;
+						const estVerrouille = i > nbFaits && !complete;
+						const cfg = NIVEAU_CONFIG[exo.niveau] ?? NIVEAU_CONFIG.facile;
 
-					return (
-						<button
-							key={exo.id}
-							type="button"
-							className={[
-								"quete-item",
-								estFait       ? "quete-item--fait"   : "",
-								estCourant    ? "quete-item--courant" : "",
-								estVerrouille ? "quete-item--locked"  : "",
-							].join(" ").trim()}
-							onClick={() => estCourant && navigate(`/exercice/${exo.id}`)}
-							disabled={estVerrouille || estFait}
-							aria-label={`${exo.titre} — ${NIVEAU_LABEL[exo.niveau] ?? exo.niveau}`}
-						>
-							{/* Badge */}
-							<div className={[
-								"quete-item-badge",
-								estFait    ? "quete-item-badge--fait"    : "",
-								estCourant ? "quete-item-badge--courant" : "",
-							].join(" ").trim()}>
-								{estFait
-									? <CheckCircle2 size={20} color="white" strokeWidth={2.5} />
-									: estVerrouille
-									? <Lock size={16} color="#94a3b8" strokeWidth={2} />
-									: <span className="quete-item-num">{i + 1}</span>
-								}
-							</div>
+						return (
+							<li key={exo.id}>
+								<button
+									type="button"
+									className={[
+										"quete-card",
+										estFait       ? "quete-card--fait"    : "",
+										estCourant    ? "quete-card--courant" : "",
+										estVerrouille ? "quete-card--locked"  : "",
+									].join(" ").trim()}
+									style={{ "--niveau-color": cfg.couleur } as React.CSSProperties}
+									onClick={() => estCourant && navigate(`/exercice/${exo.id}`)}
+									disabled={estVerrouille || estFait}
+									aria-label={`${exo.titre} — ${cfg.label}${estFait ? " (terminé)" : estVerrouille ? " (verrouillé)" : ""}`}
+								>
+									{/* Badge état (top-left) */}
+									<div className={[
+										"quete-card-badge",
+										estFait    ? "quete-card-badge--fait"    : "",
+										estCourant ? "quete-card-badge--courant" : "",
+									].join(" ").trim()}>
+										{estFait
+											? <CheckCircle2 size={16} color="white" strokeWidth={2.5} />
+											: estVerrouille
+											? <Lock size={13} color="#94a3b8" strokeWidth={2} />
+											: <span>{i + 1}</span>
+										}
+									</div>
 
-							{/* Corps */}
-							<div className="quete-item-body">
-								<p className="quete-item-titre">{exo.titre}</p>
-								<div className="quete-item-meta">
-									<span className="quete-item-niveau" style={{ color: NIVEAU_COLOR[exo.niveau] ?? NIVEAU_COLOR.facile }}>
-										● {NIVEAU_LABEL[exo.niveau] ?? exo.niveau}
-									</span>
-									{exo.nb_revisions > 0 && (
-										<span className="quete-item-revision">Révision</span>
-									)}
-								</div>
-							</div>
+									{/* Barres de difficulté */}
+									<NiveauBarres barres={cfg.barres} couleur={estCourant ? "white" : cfg.couleur} />
 
-							{/* Flèche directionnelle (item actif seulement) */}
-							{estCourant && (
-								<ChevronRight size={22} color="white" strokeWidth={2.5} className="quete-item-arrow" />
-							)}
+									{/* Titre */}
+									<p className="quete-card-title" style={{ color: estCourant ? "white" : cfg.couleur }}>
+										{exo.titre}
+									</p>
+
+									{/* Méta */}
+									<p className="quete-card-desc">
+										{cfg.label}
+										{exo.nb_revisions > 0 && " · Révision"}
+									</p>
+								</button>
+							</li>
+						);
+					})}
+				</ul>
+
+				{/* Bannière succès */}
+				{complete && (
+					<div className="quete-success">
+						<p className="quete-success-emoji">🏆</p>
+						<p className="quete-success-titre">Quête accomplie !</p>
+						<p className="quete-success-sub">Revenez demain pour de nouveaux exercices.</p>
+						<button type="button" className="quete-success-btn" onClick={() => navigate("/dashboard")}>
+							Retour au tableau de bord
 						</button>
-					);
-				})}
-			</div>
-
-			{/* Bannière succès */}
-			{complete && (
-				<div className="quete-success">
-					<p className="quete-success-emoji">🏆</p>
-					<p className="quete-success-titre">Quête accomplie !</p>
-					<p className="quete-success-sub">Revenez demain pour de nouveaux exercices.</p>
-					<button
-						type="button"
-						className="quete-success-btn"
-						onClick={() => navigate("/dashboard")}
-					>
-						Retour au tableau de bord
-					</button>
-				</div>
-			)}
+					</div>
+				)}
+			</main>
 		</div>
 	);
 };
