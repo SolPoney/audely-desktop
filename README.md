@@ -14,6 +14,7 @@ Audely est une application web de rééducation auditive destinée aux personnes
 
 ### Exercices libres — Catégories
 ![Catégories](screenshots/categories.png)
+![Catégories 2](screenshots/categories2.png)
 
 ### Parcours d'entraînement
 ![Parcours](screenshots/parcours.png)
@@ -24,6 +25,7 @@ Audely est une application web de rééducation auditive destinée aux personnes
 
 ### Statistiques
 ![Statistiques](screenshots/stats.png)
+![Statistiques 2](screenshots/stats2.png)
 
 ### Liste d'exercices
 | Reconnaître | Détecter |
