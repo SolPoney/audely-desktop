@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "sonner";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -35,6 +36,7 @@ function App() {
         <Route path="/quete" element={<PrivateRoute><QueteDuJourPage /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
+    <Analytics />
   );
 }
 
