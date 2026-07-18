@@ -22,21 +22,23 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Toaster position="bottom-right" richColors />
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-        <Route path="/exercices" element={<PrivateRoute><ExercicesPage /></PrivateRoute>} />
-        <Route path="/exercice/:id" element={<PrivateRoute><ExercicePage /></PrivateRoute>} />
-        <Route path="/parcours" element={<PrivateRoute><ParcoursPage /></PrivateRoute>} />
-        <Route path="/parcours/:niveau" element={<PrivateRoute><ParcoursListePage /></PrivateRoute>} />
-        <Route path="/exercices/categorie/:id" element={<PrivateRoute><ExercicesCatPage /></PrivateRoute>} />
-        <Route path="/stats" element={<PrivateRoute><StatsPage /></PrivateRoute>} />
-        <Route path="/quete" element={<PrivateRoute><QueteDuJourPage /></PrivateRoute>} />
-      </Routes>
-    </BrowserRouter>
-    <Analytics />
+    <>
+      <BrowserRouter>
+        <Toaster position="bottom-right" richColors />
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+          <Route path="/exercices" element={<PrivateRoute><ExercicesPage /></PrivateRoute>} />
+          <Route path="/exercice/:id" element={<PrivateRoute><ExercicePage /></PrivateRoute>} />
+          <Route path="/parcours" element={<PrivateRoute><ParcoursPage /></PrivateRoute>} />
+          <Route path="/parcours/:niveau" element={<PrivateRoute><ParcoursListePage /></PrivateRoute>} />
+          <Route path="/exercices/categorie/:id" element={<PrivateRoute><ExercicesCatPage /></PrivateRoute>} />
+          <Route path="/stats" element={<PrivateRoute><StatsPage /></PrivateRoute>} />
+          <Route path="/quete" element={<PrivateRoute><QueteDuJourPage /></PrivateRoute>} />
+        </Routes>
+      </BrowserRouter>
+      <Analytics />
+    </>
   );
 }
 
