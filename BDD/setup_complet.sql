@@ -4,7 +4,25 @@
 -- Usage :
 --   1. Créer la base :  CREATE DATABASE audely_desktop CHARACTER SET utf8mb4;
 --   2. Lancer ce fichier : mysql -u <user> -p audely_desktop < BDD/setup_complet.sql
+--
+-- Security : two dedicated users are created with least-privilege rights
+--   • audely_app  → used by the backend API (SELECT, INSERT, UPDATE, DELETE)
+--   • audely_ro   → read-only user for reporting / debugging
+--
+-- Remplacez les mots de passe avant le déploiement en production.
 -- ================================================================
+
+-- ── Utilisateurs BDD avec droits minimaux (least privilege) ─────
+
+-- Application user: used by the Node.js backend
+CREATE USER IF NOT EXISTS 'audely_app'@'%' IDENTIFIED BY 'App_Str0ng!Pass';
+GRANT SELECT, INSERT, UPDATE, DELETE ON audely_desktop.* TO 'audely_app'@'%';
+
+-- Read-only user: for reporting and debugging (never used by the app)
+CREATE USER IF NOT EXISTS 'audely_ro'@'localhost' IDENTIFIED BY 'Readonly_Pass!42';
+GRANT SELECT ON audely_desktop.* TO 'audely_ro'@'localhost';
+
+FLUSH PRIVILEGES;
 
 SET FOREIGN_KEY_CHECKS = 0;
 

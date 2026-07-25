@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  # ── Base de données MySQL ────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: audely_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-audely_desktop}
+      MYSQL_USER: ${DB_USER:-audely_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-audely_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - audely_db_data:/var/lib/mysql
+      - ./BDD/setup_complet.sql:/docker-entrypoint-initdb.d/01_setup.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Backend Node.js / Express ────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: audely_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-audely_user}
+      DB_PASSWORD: ${DB_PASSWORD:-audely_pass}
+      DB_NAME: ${DB_NAME:-audely_desktop}
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  audely_db_data:
+    driver: local

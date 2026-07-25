@@ -1,9 +1,16 @@
 import pool from '../config/db.js';
 import { Request, Response } from 'express';
 
+/** Returns today's date as an ISO string (YYYY-MM-DD, UTC). */
 const today = () => new Date().toISOString().slice(0, 10);
 
-/* ── Algorithme SM-2 simplifié ────────────────────────────────── */
+/* ── SM-2 spaced-repetition algorithm (simplified) ─────────────────────────
+ *
+ * Based on the SuperMemo SM-2 algorithm:
+ *   - score < 50  → reset to 1 day  (exercise failed, review immediately)
+ *   - score 50-79 → 3 days          (partial success, short review interval)
+ *   - score ≥ 80  → double current interval (capped at 30 days)
+ */
 const prochainIntervalle = (score: number, intervalleActuel: number): number => {
   if (score >= 80) return Math.min(Math.max(intervalleActuel * 2, 7), 30);
   if (score >= 50) return 3;
@@ -16,7 +23,17 @@ const addDays = (date: string, days: number): string => {
   return d.toISOString().slice(0, 10);
 };
 
-/* ── Mise à jour / création d'une révision après un résultat ─── */
+/**
+ * Create or update the spaced-repetition record for a completed exercise.
+ *
+ * Called automatically after each result is saved via `saveResultat`.
+ * If no record exists for the (user, exercise) pair, a new one is inserted.
+ * Otherwise the next review date and interval are updated based on the score.
+ *
+ * @param idUtilisateur - The user's database id
+ * @param idExercice    - The exercise's database id
+ * @param score         - Score obtained (0–100)
+ */
 export const updateRevision = async (
   idUtilisateur: number,
   idExercice: number,
@@ -47,7 +64,18 @@ export const updateRevision = async (
   }
 };
 
-/* ── GET /api/quete-du-jour ──────────────────────────────────── */
+/**
+ * Build the daily quest (up to 10 exercises) for the authenticated user.
+ *
+ * Priority order:
+ *   1. Exercises due for review today (SM-2 `prochaine_revision <= today`)
+ *   2. Exercises never attempted by the user (random order)
+ *
+ * Also returns whether the quest is already complete for today.
+ *
+ * @route GET /api/quete-du-jour
+ * @access Private (JWT required)
+ */
 export const getQueteDuJour = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
