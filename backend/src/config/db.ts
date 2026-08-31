@@ -7,13 +7,14 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10,
+  // Le plan Clever Cloud "Dev" limite à 5 connexions simultanées côté serveur.
+  connectionLimit: 4,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   // Recycle les connexions avant que l'hébergeur MySQL ne les coupe lui-même
   // (évite les erreurs PROTOCOL_CONNECTION_LOST sur connexion inactive).
   idleTimeout: 60000,
-  maxIdle: 10,
+  maxIdle: 4,
 });
 
 // Sans ce listener, une connexion coupée côté serveur (inactivité, hébergeur
