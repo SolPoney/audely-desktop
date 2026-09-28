@@ -5,6 +5,11 @@
 -- tables), ce script est additif : à exécuter UNE SEULE FOIS sur la
 -- base de production existante, sans rien supprimer.
 --
+-- Constat (vérifié en prod le 29/09) : la table Revisions n'existe pas
+-- du tout en production — la fonctionnalité quête du jour/SRS n'a
+-- jamais été déployée. Ce script la CRÉE (pas d'ALTER, pas de données
+-- existantes à risque).
+--
 -- Avant de lancer :
 --   1. Faire une sauvegarde (./BDD/backup.sh ou mysqldump manuel).
 --   2. Vérifier qu'aucun exercice d'id 76 à 95 n'existe déjà en base
@@ -14,7 +19,7 @@
 --      INSERT ne sont pas idempotents).
 --
 -- Contenu :
---   A. Colonnes FSRS sur Revisions (remplace l'algo SM-2 par FSRS,
+--   A. Table Revisions avec colonnes FSRS (SRS jamais déployé jusqu'ici,
 --      cf. backend/src/controllers/queteController.ts)
 --   B. 17 nouveaux exercices (détection/discrimination non-verbales,
 --      classification, intrus, consignes progressives, dialogues)
@@ -23,13 +28,25 @@
 --   D. Élargissement de 12 banques de mots/items trop courtes
 -- ================================================================
 
--- ── A. Colonnes FSRS sur Revisions ─────────────────────────────
-ALTER TABLE Revisions
-  ADD COLUMN stabilite         DOUBLE DEFAULT NULL AFTER nb_revisions,
-  ADD COLUMN difficulte        DOUBLE DEFAULT NULL AFTER stabilite,
-  ADD COLUMN etat              TINYINT NOT NULL DEFAULT 0 AFTER difficulte,
-  ADD COLUMN nb_echecs         INT NOT NULL DEFAULT 0 AFTER etat,
-  ADD COLUMN derniere_revision DATETIME DEFAULT NULL AFTER nb_echecs;
+-- ── A. Table Revisions (avec colonnes FSRS dès la création) ────
+CREATE TABLE Revisions (
+  id                  INT AUTO_INCREMENT,
+  id_utilisateur      INT NOT NULL,
+  id_exercice         INT NOT NULL,
+  prochaine_revision  DATE NOT NULL,
+  intervalle_jours    INT NOT NULL DEFAULT 1,
+  nb_revisions        INT NOT NULL DEFAULT 1,
+  stabilite           DOUBLE DEFAULT NULL,
+  difficulte          DOUBLE DEFAULT NULL,
+  etat                TINYINT NOT NULL DEFAULT 0,
+  nb_echecs           INT NOT NULL DEFAULT 0,
+  derniere_revision   DATETIME DEFAULT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT FK_Revisions_Utilisateur FOREIGN KEY (id_utilisateur)
+    REFERENCES Utilisateur(id) ON DELETE CASCADE,
+  CONSTRAINT FK_Revisions_Exercices FOREIGN KEY (id_exercice)
+    REFERENCES Exercices(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── B. + C. + D. Nouveaux exercices et banques élargies ────────
 
