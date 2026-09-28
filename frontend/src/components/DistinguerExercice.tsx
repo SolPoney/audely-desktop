@@ -1,8 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Equal, Divide, ChevronRight } from "lucide-react";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
+import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
+import { NIVEAU_LABEL } from "../utils/niveau";
 
 interface Props {
 	exercice: { id: number; titre: string; niveau: string };
@@ -10,7 +12,18 @@ interface Props {
 
 type Reponse = "identique" | "different";
 
-const TOTAL_QUESTIONS = 5;
+/* Facile : fréquences très espacées — Moyen : écarts d'un ton — Difficile : écarts d'un demi-ton (très proches) */
+const FREQUENCES_PAR_NIVEAU: Record<string, number[]> = {
+	facile: [330, 392, 440, 523, 587, 660, 784],
+	moyen: [440, 494, 554, 622, 698, 784],
+	difficile: [440, 466, 494, 523, 554, 587, 622],
+};
+
+const TOTAL_QUESTIONS_PAR_NIVEAU: Record<string, number> = {
+	facile: 5,
+	moyen: 6,
+	difficile: 8,
+};
 
 const jouerSon = (ctx: AudioContext, frequence: number) => {
 	const osc = ctx.createOscillator();
@@ -28,21 +41,19 @@ const jouerSon = (ctx: AudioContext, frequence: number) => {
 	osc.stop(t + 1);
 };
 
-const FREQUENCES = [330, 392, 440, 523, 587, 660, 784];
-
-const tirerQuestion = (): { sonA: number; sonB: number; reponseCorrecte: Reponse } => {
-	const freqA = FREQUENCES[Math.floor(Math.random() * FREQUENCES.length)];
+const tirerQuestion = (frequences: number[]): { sonA: number; sonB: number; reponseCorrecte: Reponse } => {
+	const freqA = frequences[Math.floor(Math.random() * frequences.length)];
 	const identique = Math.random() > 0.5;
 	if (identique) return { sonA: freqA, sonB: freqA, reponseCorrecte: "identique" };
 	let freqB = freqA;
 	while (freqB === freqA) {
-		freqB = FREQUENCES[Math.floor(Math.random() * FREQUENCES.length)];
+		freqB = frequences[Math.floor(Math.random() * frequences.length)];
 	}
 	return { sonA: freqA, sonB: freqB, reponseCorrecte: "different" };
 };
 
-const getMessage = (nb: number) => {
-	const r = nb / TOTAL_QUESTIONS;
+const getMessage = (nb: number, total: number) => {
+	const r = nb / total;
 	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
 	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
 	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
@@ -51,8 +62,10 @@ const getMessage = (nb: number) => {
 
 const DistinguerExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
+	const frequences = FREQUENCES_PAR_NIVEAU[exercice.niveau] || FREQUENCES_PAR_NIVEAU.facile;
+	const totalQuestions = TOTAL_QUESTIONS_PAR_NIVEAU[exercice.niveau] || TOTAL_QUESTIONS_PAR_NIVEAU.facile;
 	const [ecran, setEcran]           = useState<"exercice" | "resultats">("exercice");
-	const [question, setQuestion]     = useState(tirerQuestion());
+	const [question, setQuestion]     = useState(() => tirerQuestion(frequences));
 	const [questionNum, setQuestionNum] = useState(1);
 	const [reponse, setReponse]       = useState<Reponse | null>(null);
 	const [feedback, setFeedback]     = useState<"ok" | "ko" | null>(null);
@@ -60,6 +73,18 @@ const DistinguerExercice = ({ exercice }: Props) => {
 	const [sonAJoue, setSonAJoue]     = useState(false);
 	const [sonBJoue, setSonBJoue]     = useState(false);
 	const ctxRef = useRef<AudioContext | null>(null);
+	const bruitCtxRef = useRef<AudioContext | null>(null);
+	const bruitCtrlRef = useRef<{ stop: () => void } | null>(null);
+
+	useEffect(() => {
+		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+		bruitCtxRef.current = ctx;
+		bruitCtrlRef.current = demarrerBruitFond(ctx, niveauBruitParDefaut(exercice.niveau));
+		return () => {
+			bruitCtrlRef.current?.stop();
+			bruitCtxRef.current?.close();
+		};
+	}, [exercice.niveau]);
 
 	const getCtxResume = async () => {
 		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -88,7 +113,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 	};
 
 	const suivant = async () => {
-		if (questionNum >= TOTAL_QUESTIONS) {
+		if (questionNum >= totalQuestions) {
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
 				method: "POST",
@@ -96,13 +121,13 @@ const DistinguerExercice = ({ exercice }: Props) => {
 				body: JSON.stringify({
 					id_utilisateur: getUserId(),
 					id_exercice: exercice.id,
-					score: Math.round((score / TOTAL_QUESTIONS) * 100),
+					score: Math.round((score / totalQuestions) * 100),
 				}),
 			});
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
-			setQuestion(tirerQuestion());
+			setQuestion(tirerQuestion(frequences));
 			setReponse(null);
 			setFeedback(null);
 			setSonAJoue(false);
@@ -112,11 +137,11 @@ const DistinguerExercice = ({ exercice }: Props) => {
 
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
-		const pct = Math.round((score / TOTAL_QUESTIONS) * 100);
+		const pct = Math.round((score / totalQuestions) * 100);
 		return (
 			<div className="det-result">
 				<h1 className="det-result-score">
-					{score} / {TOTAL_QUESTIONS} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
+					{score} / {totalQuestions} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
 				</h1>
 				<div className="ep-result-ring" aria-hidden="true">
 					<svg viewBox="0 0 120 120" width="180" height="180">
@@ -133,7 +158,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(score)}</p>
+				<p className="det-result-message">{getMessage(score, totalQuestions)}</p>
 				<div className="det-result-actions">
 					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
 					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>
@@ -152,16 +177,19 @@ const DistinguerExercice = ({ exercice }: Props) => {
 					<X size={18} strokeWidth={2.5} />
 				</button>
 				<div className="ep-progress" role="progressbar"
-					aria-valuenow={questionNum} aria-valuemin={1} aria-valuemax={TOTAL_QUESTIONS}
-					aria-label={`Question ${questionNum} sur ${TOTAL_QUESTIONS}`}>
-					{Array.from({ length: TOTAL_QUESTIONS }).map((_, i) => (
+					aria-valuenow={questionNum} aria-valuemin={1} aria-valuemax={totalQuestions}
+					aria-label={`Question ${questionNum} sur ${totalQuestions}`}>
+					{Array.from({ length: totalQuestions }).map((_, i) => (
 						<div key={i} className={`ep-progress-dash${i < questionNum - 1 ? " ep-progress-dash--actif" : i === questionNum - 1 ? " ep-progress-dash--current" : ""}`} />
 					))}
 				</div>
-				<span className="ep-progress-label">{questionNum} / {TOTAL_QUESTIONS}</span>
+				<span className="ep-progress-label">{questionNum} / {totalQuestions}</span>
 			</div>
 
-			<p className="rythme-instruction">IDENTIQUE OU DIFFÉRENT ?</p>
+			<div style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", marginTop: "0.5rem" }}>
+				<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+			</div>
+			<p className="rythme-instruction">{exercice.titre.toUpperCase()}</p>
 
 			{/* Deux boutons play */}
 			<div className="distinguer-plays">
@@ -233,7 +261,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 							: `C'était : ${question.reponseCorrecte === "identique" ? "Identiques" : "Différents"}`}
 					</p>
 					<button type="button" className="ep-btn-suivant-inline" onClick={suivant}>
-						{questionNum >= TOTAL_QUESTIONS ? "Voir mon score" : "Continuer"}
+						{questionNum >= totalQuestions ? "Voir mon score" : "Continuer"}
 						<ChevronRight size={18} strokeWidth={2.5} />
 					</button>
 				</div>

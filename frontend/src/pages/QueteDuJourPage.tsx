@@ -29,7 +29,8 @@ const TYPE_LABEL: Record<string, string> = {
 	grave_aigu:         "Grave / Aigu",
 	themes:             "Thème",
 	mot_similaire:      "Mots similaires",
-	decision:           "Décision",
+	decision_orthographique: "Reconnaître un mot",
+	percevoir:          "Accentuation",
 };
 
 

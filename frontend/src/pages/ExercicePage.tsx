@@ -115,6 +115,11 @@ const ExercicePage = () => {
 	}
 
 	if (exercice.type_exercice === "distinguer") {
+		// → ExercicePartenaire dès qu'il y a un contenu phonétique réel (paires/groupes/triplets de mots)
+		if (contenuParsed?.paires || contenuParsed?.groupes || contenuParsed?.triplets || contenuParsed?.listes_intrus) {
+			return <ExercicePartenaire exercice={exercice} />;
+		}
+		// Sinon : discrimination non-verbale pure (sons générés, sans contenu JSON)
 		return <DistinguerExercice exercice={exercice} />;
 	}
 

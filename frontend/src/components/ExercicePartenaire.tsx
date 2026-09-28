@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
 import { X, Volume2, ChevronRight } from "lucide-react";
+import { demarrerBruitFond, niveauBruitParDefaut, type NiveauBruit } from "../utils/bruitFond";
 
 interface Props {
 	exercice: {
@@ -127,6 +128,64 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
+	// --- Paires avec contraste ciblé : { mots: [...] } (voyelles/consonnes/lieu d'articulation) ---
+	if (contenu?.paires && contenu.paires[0]?.mots && !contenu.paires[0]?.mot1) {
+		for (const item of contenu.paires) {
+			const mots: string[] = item.mots;
+			const reponse = mots[Math.floor(Math.random() * mots.length)];
+			questions.push({
+				affichage: "......",
+				tts: reponse,
+				choix: [...mots].sort(() => Math.random() - 0.5),
+				reponse,
+				contexte: "Quel mot avez-vous entendu ?",
+			});
+		}
+	}
+
+	// --- Triplets : contraste à 3 sons (lieu d'articulation bilabiale/dentale/vélaire...) ---
+	if (contenu?.triplets && contenu.triplets[0]?.mots) {
+		for (const item of contenu.triplets) {
+			const mots: string[] = item.mots;
+			const reponse = mots[Math.floor(Math.random() * mots.length)];
+			questions.push({
+				affichage: "......",
+				tts: reponse,
+				choix: [...mots].sort(() => Math.random() - 0.5),
+				reponse,
+				contexte: "Quel mot avez-vous entendu ?",
+			});
+		}
+	}
+
+	// --- Phrases riches en sons aigus / graves (classification, pas paire minimale) ---
+	if (contenu?.paires && contenu.paires[0]?.A_aigu) {
+		for (const item of contenu.paires) {
+			const estAigu = Math.random() > 0.5;
+			questions.push({
+				affichage: "......",
+				tts: estAigu ? item.A_aigu : item.B_grave,
+				choix: ["Aigu", "Grave"],
+				reponse: estAigu ? "Aigu" : "Grave",
+				contexte: "Cette phrase est-elle riche en sons aigus ou en sons graves ?",
+			});
+		}
+	}
+
+	// --- Listes avec intrus (voyelles/consonnes/mots/phrases proches) ---
+	if (contenu?.listes_intrus) {
+		for (const item of contenu.listes_intrus as { items: string[]; intrus: string }[]) {
+			questions.push({
+				affichage: item.items.join(", "),
+				tts: item.items.join(". "),
+				choix: [...item.items].sort(() => Math.random() - 0.5),
+				reponse: item.intrus,
+				contexte: "Quel est l'intrus dans cette liste ?",
+				masquerAffichage: true,
+			});
+		}
+	}
+
 	// --- Paires simples (syllabes) ---
 	if (contenu?.paires && Array.isArray(contenu.paires[0])) {
 		for (const paire of contenu.paires) {
@@ -229,6 +288,21 @@ function genererQuestions(contenu: any): Question[] {
 				choix: [nom, ...autres].sort(() => Math.random() - 0.5),
 				reponse: nom,
 				contexte: "De quoi s'agit-il ?",
+			});
+		}
+	}
+
+	// --- Classification (identification non-verbale par catégories) ---
+	if (contenu?.classification) {
+		const items: { description: string; categorie: string }[] = contenu.classification;
+		const categories: string[] = contenu.categories || [...new Set(items.map((i) => i.categorie))];
+		for (const item of items) {
+			questions.push({
+				affichage: item.description,
+				tts: item.description,
+				choix: categories,
+				reponse: item.categorie,
+				contexte: contenu.consigne_categorisation || "À quelle catégorie appartient ce son ?",
 			});
 		}
 	}
@@ -447,6 +521,8 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 	const [choixUser, setChoixUser] = useState<string | null>(null);
 	const [score, setScore] = useState(0);
 	const [aEcoute, setAEcoute] = useState(false); // choix masqués jusqu'à la 1ère écoute
+	const bruitCtrlRef = useRef<{ stop: () => void } | null>(null);
+	const audioCtxBruitRef = useRef<AudioContext | null>(null);
 
 	useEffect(() => {
 		const contenu = typeof exercice.contenu === "string"
@@ -454,6 +530,22 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			: exercice.contenu;
 		setQuestions(genererQuestions(contenu));
 	}, [exercice.contenu]);
+
+	// Arrêt du bruit de fond au démontage du composant
+	useEffect(() => () => {
+		bruitCtrlRef.current?.stop();
+		audioCtxBruitRef.current?.close();
+	}, []);
+
+	const demarrerBruitFondSession = useCallback(() => {
+		const contenu = typeof exercice.contenu === "string"
+			? JSON.parse(exercice.contenu)
+			: exercice.contenu;
+		const niveauBruit: NiveauBruit = contenu?.bruit_fond || niveauBruitParDefaut(exercice.niveau);
+		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+		audioCtxBruitRef.current = ctx;
+		bruitCtrlRef.current = demarrerBruitFond(ctx, niveauBruit);
+	}, [exercice.contenu, exercice.niveau]);
 
 	const total = questions.length;
 	const question = questions[index];
@@ -485,6 +577,8 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
+			bruitCtrlRef.current?.stop();
+			bruitCtrlRef.current = null;
 			const pct = Math.round(score / total * 100);
 			const token = localStorage.getItem("token");
 			await fetch(`${API_URL}/api/resultats`, {
@@ -553,7 +647,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 				</div>
 
 				<div className="ep-footer">
-					<button className="ep-btn-primary" onClick={() => setEcran("question")}>
+					<button className="ep-btn-primary" onClick={() => { demarrerBruitFondSession(); setEcran("question"); }}>
 						C'est parti !
 						<ChevronRight size={20} strokeWidth={2.5} />
 					</button>
@@ -608,7 +702,12 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			<div className="ep-topbar">
 				<button
 					className="ep-close"
-					onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}
+					onClick={() => {
+						if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; }
+						bruitCtrlRef.current?.stop();
+						bruitCtrlRef.current = null;
+						navigate(-1);
+					}}
 					aria-label="Fermer"
 				>
 					<X size={18} strokeWidth={2.5} />

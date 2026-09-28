@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { getUserId } from "../hooks/useAuth";
 import { X, Play, Pause, Clock } from "lucide-react";
+import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
+import { NIVEAU_LABEL } from "../utils/niveau";
 
 interface Props {
 	exercice: {
@@ -12,10 +14,12 @@ interface Props {
 	};
 }
 
-const DUREE_SECONDES = 12;
-const NB_SONS_MIN = 3;
-const NB_SONS_MAX = 6;
-const TOLERANCE_MS = 1500; // fenêtre de détection correcte
+/* Facile : sons espacés, fenêtre large, silence — Difficile : rythme dense, fenêtre courte, bruit de fond */
+const PARAMETRES_PAR_NIVEAU: Record<string, { duree: number; nbSonsMin: number; nbSonsMax: number; tolerance: number }> = {
+	facile:     { duree: 14, nbSonsMin: 3, nbSonsMax: 5, tolerance: 1800 },
+	moyen:      { duree: 12, nbSonsMin: 4, nbSonsMax: 6, tolerance: 1300 },
+	difficile:  { duree: 10, nbSonsMin: 5, nbSonsMax: 8, tolerance: 900 },
+};
 
 /* Bip audio pur */
 const jouerBip = (ctx: AudioContext) => {
@@ -31,14 +35,14 @@ const jouerBip = (ctx: AudioContext) => {
 };
 
 /* Calcule les bonnes réponses : chaque son matché à un clic dans la fenêtre */
-const calculerBonnesReponses = (sons: number[], clics: number[]): number => {
+const calculerBonnesReponses = (sons: number[], clics: number[], tolerance: number): number => {
 	const usedClics = new Set<number>();
 	let bonnes = 0;
 	for (const son of sons) {
 		for (let i = 0; i < clics.length; i++) {
 			if (!usedClics.has(i)) {
 				const delta = clics[i] - son;
-				if (delta >= -300 && delta <= TOLERANCE_MS) {
+				if (delta >= -300 && delta <= tolerance) {
 					bonnes++;
 					usedClics.add(i);
 					break;
@@ -61,7 +65,9 @@ const getMessage = (bonnes: number, total: number): string => {
 
 const DetecterExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
+	const params = PARAMETRES_PAR_NIVEAU[exercice.niveau] || PARAMETRES_PAR_NIVEAU.facile;
 	const audioCtxRef   = useRef<AudioContext | null>(null);
+	const bruitCtrlRef  = useRef<{ stop: () => void } | null>(null);
 	const timersRef     = useRef<ReturnType<typeof setTimeout>[]>([]);
 	const soundTimes    = useRef<number[]>([]);
 	const clickTimes    = useRef<number[]>([]);
@@ -83,15 +89,16 @@ const DetecterExercice = ({ exercice }: Props) => {
 		const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
 		await ctx.resume();
 		audioCtxRef.current = ctx;
+		bruitCtrlRef.current = demarrerBruitFond(ctx, niveauBruitParDefaut(exercice.niveau));
 		soundTimes.current  = [];
 		clickTimes.current  = [];
 
 		jouerBip(ctx);
 
-		const nbSons = Math.floor(Math.random() * (NB_SONS_MAX - NB_SONS_MIN + 1)) + NB_SONS_MIN;
+		const nbSons = Math.floor(Math.random() * (params.nbSonsMax - params.nbSonsMin + 1)) + params.nbSonsMin;
 		const timestamps: number[] = [];
 		for (let i = 0; i < nbSons; i++) {
-			timestamps.push(Math.random() * (DUREE_SECONDES * 1000 - 2500) + 1500);
+			timestamps.push(Math.random() * (params.duree * 1000 - 2500) + 1500);
 		}
 		timestamps.sort((a, b) => a - b);
 
@@ -108,14 +115,16 @@ const DetecterExercice = ({ exercice }: Props) => {
 		);
 
 		const intervalProg = setInterval(() => {
-			setProgression((p) => Math.min(p + 100 / (DUREE_SECONDES * 10), 100));
+			setProgression((p) => Math.min(p + 100 / (params.duree * 10), 100));
 		}, 100);
 
 		const timerFin = setTimeout(async () => {
 			clearInterval(intervalProg);
 			setProgression(100);
+			bruitCtrlRef.current?.stop();
+			bruitCtrlRef.current = null;
 
-			const bonnesR = calculerBonnesReponses(soundTimes.current, clickTimes.current);
+			const bonnesR = calculerBonnesReponses(soundTimes.current, clickTimes.current, params.tolerance);
 			setBonnes(bonnesR);
 			setTotal(soundTimes.current.length);
 			setStatut("termine");
@@ -135,14 +144,14 @@ const DetecterExercice = ({ exercice }: Props) => {
 						: 0,
 				}),
 			});
-		}, DUREE_SECONDES * 1000);
+		}, params.duree * 1000);
 
 		timersRef.current = [
 			...timersBips,
 			timerFin,
 			intervalProg as unknown as ReturnType<typeof setTimeout>,
 		];
-	}, [exercice.id]);
+	}, [exercice.id, exercice.niveau, params.duree, params.nbSonsMin, params.nbSonsMax, params.tolerance]);
 
 	const detecter = () => {
 		if (statut !== "en_cours") return;
@@ -151,7 +160,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 
 		/* Feedback si clic proche d'un son */
 		const bonClic = soundTimes.current.some(
-			(t) => now >= t - 300 && now <= t + TOLERANCE_MS,
+			(t) => now >= t - 300 && now <= t + params.tolerance,
 		);
 		if (bonClic) {
 			setFeedback(true);
@@ -162,6 +171,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 
 	const fermer = () => {
 		timersRef.current.forEach(clearTimeout);
+		bruitCtrlRef.current?.stop();
 		audioCtxRef.current?.close();
 		navigate(-1);
 	};
@@ -216,10 +226,14 @@ const DetecterExercice = ({ exercice }: Props) => {
 					<X size={18} strokeWidth={2.5} />
 				</button>
 
+				<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+
 				<div className="det-timer" aria-hidden="true">
 					<Clock size={18} strokeWidth={1.8} />
 				</div>
 			</div>
+
+			<p style={{ textAlign: "center", fontWeight: 700, marginTop: "0.75rem" }}>{exercice.titre}</p>
 
 			{/* Instruction */}
 			<p className="det-instruction">
