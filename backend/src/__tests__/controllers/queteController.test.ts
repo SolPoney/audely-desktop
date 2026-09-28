@@ -10,16 +10,7 @@ import { updateRevision } from '../../controllers/queteController.js';
 
 const mockExecute = vi.mocked(pool.execute);
 
-// ─────────────────────────────────────────────────────────
-// Aide : calcule la date dans N jours (même logique que le controller)
-// ─────────────────────────────────────────────────────────
-const dateInDays = (n: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-
-describe('updateRevision — algorithme SM-2', () => {
+describe('updateRevision — algorithme FSRS', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -33,78 +24,105 @@ describe('updateRevision — algorithme SM-2', () => {
       mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
     });
 
-    it('score < 50 → intervalle 1 jour (on repart de zéro)', async () => {
+    it('insère une nouvelle ligne quand aucune révision n\'existe pour cet exercice', async () => {
+      await updateRevision(1, 1, 80);
+
+      const [sql] = mockExecute.mock.calls[1] as [string, unknown[]];
+      expect(sql).toContain('INSERT');
+    });
+
+    it('score < 50 (Again) → intervalle très court (≤ 2 jours)', async () => {
       await updateRevision(1, 1, 30);
 
-      const [sql, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(sql).toContain('INSERT');
-      expect(params[3]).toBe(1); // nouvelIntervalle
-      expect(params[2]).toBe(dateInDays(1)); // prochaine_revision
+      const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
+      const intervalle = params[3] as number;
+      expect(intervalle).toBeLessThanOrEqual(2);
+      expect(intervalle).toBeGreaterThanOrEqual(1); // jamais 0
     });
 
-    it('50 ≤ score < 80 → intervalle 3 jours', async () => {
-      await updateRevision(1, 1, 60);
+    it('un score plus élevé produit un intervalle au moins aussi long qu\'un score plus bas', async () => {
+      await updateRevision(1, 1, 95); // Easy
 
-      const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[3]).toBe(3);
-      expect(params[2]).toBe(dateInDays(3));
+      const [, paramsEasy] = mockExecute.mock.calls[1] as [string, unknown[]];
+      const intervalleEasy = paramsEasy[3] as number;
+
+      vi.clearAllMocks();
+      mockExecute.mockResolvedValueOnce([[]]);
+      mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
+      await updateRevision(1, 1, 75); // Good
+
+      const [, paramsGood] = mockExecute.mock.calls[1] as [string, unknown[]];
+      const intervalleGood = paramsGood[3] as number;
+
+      expect(intervalleEasy).toBeGreaterThan(intervalleGood);
     });
 
-    it('score ≥ 80, premier essai → intervalle 7 jours (max(1×2, 7) = 7)', async () => {
-      await updateRevision(1, 1, 90);
+    it('persiste la stabilité, la difficulté, l\'état FSRS et le nombre d\'échecs', async () => {
+      await updateRevision(1, 1, 80);
 
       const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[3]).toBe(7);
-      expect(params[2]).toBe(dateInDays(7));
+      // idUtilisateur, idExercice, prochaine, intervalle, reps, stabilite, difficulte, etat, echecs, derniere_revision
+      expect(params[4]).toBe(1); // reps
+      expect(params[5]).toBeGreaterThan(0); // stabilité initialisée
+      expect(params[6]).toBeGreaterThan(0); // difficulté initialisée
+      expect(params[8]).toBe(0); // pas d'échec au premier essai réussi
     });
   });
 
   // ── Révision existante — UPDATE ────────────────────────
   describe('révision existante — UPDATE', () => {
-    const mockExisting = (intervalleActuel: number) => {
-      mockExecute.mockResolvedValueOnce([[{ intervalle_jours: intervalleActuel, nb_revisions: 2 }]]);
+    // Carte FSRS déjà établie : stabilité 10, en état "Review", échéance = aujourd'hui
+    const carteExistante = () => {
+      const hier = new Date();
+      hier.setDate(hier.getDate() - 10);
+      const aujourdhui = new Date().toISOString().slice(0, 10);
+      mockExecute.mockResolvedValueOnce([[{
+        prochaine_revision: aujourdhui,
+        intervalle_jours: 10,
+        nb_revisions: 2,
+        stabilite: 10,
+        difficulte: 3,
+        etat: 2, // State.Review
+        nb_echecs: 0,
+        derniere_revision: hier.toISOString().slice(0, 10),
+      }]]);
       mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }]);
     };
 
-    it('score ≥ 80, intervalle=10 → 20 jours (10×2 = 20)', async () => {
-      mockExisting(10);
+    it('met à jour (pas insère) quand une révision existe déjà', async () => {
+      carteExistante();
       await updateRevision(1, 2, 85);
 
-      const [sql, params] = mockExecute.mock.calls[1] as [string, unknown[]];
+      const [sql] = mockExecute.mock.calls[1] as [string, unknown[]];
       expect(sql).toContain('UPDATE');
-      expect(params[1]).toBe(20); // nouvelIntervalle
     });
 
-    it('score ≥ 80, intervalle=20 → 30 jours (plafonné à 30)', async () => {
-      mockExisting(20);
-      await updateRevision(1, 2, 100);
+    it('un succès (Good) sur une carte déjà stable augmente l\'intervalle au-delà de l\'ancien', async () => {
+      carteExistante();
+      await updateRevision(1, 2, 85); // Good
 
       const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[1]).toBe(30);
+      const nouvelIntervalle = params[1] as number;
+      expect(nouvelIntervalle).toBeGreaterThan(10);
     });
 
-    it('score ≥ 80, intervalle=3 → 7 jours (max(3×2, 7) = 7)', async () => {
-      mockExisting(3);
-      await updateRevision(1, 2, 80);
+    it('un échec (score < 50) fait chuter l\'intervalle et incrémente le nombre d\'échecs', async () => {
+      carteExistante();
+      await updateRevision(1, 2, 20); // Again
 
       const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[1]).toBe(7);
+      const nouvelIntervalle = params[1] as number;
+      const nbEchecs = params[6] as number;
+      expect(nouvelIntervalle).toBeLessThan(10);
+      expect(nbEchecs).toBe(1); // 0 -> 1
     });
 
-    it("50 <= score < 80, peu importe l'intervalle -> toujours 3 jours", async () => {
-      mockExisting(14);
-      await updateRevision(1, 2, 65);
+    it('le nombre de répétitions (reps) augmente à chaque révision', async () => {
+      carteExistante();
+      await updateRevision(1, 2, 85);
 
       const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[1]).toBe(3);
-    });
-
-    it('score < 50 → remet à 1 jour (régresser)', async () => {
-      mockExisting(7);
-      await updateRevision(1, 2, 20);
-
-      const [, params] = mockExecute.mock.calls[1] as [string, unknown[]];
-      expect(params[1]).toBe(1);
+      expect(params[2]).toBe(3); // nb_revisions : 2 -> 3
     });
   });
 });

@@ -1,34 +1,69 @@
 import pool from '../config/db.js';
 import { Request, Response } from 'express';
+import { fsrs, createEmptyCard, Rating, State, type Card, type Grade } from 'ts-fsrs';
 
 /** Returns today's date as an ISO string (YYYY-MM-DD, UTC). */
 const today = () => new Date().toISOString().slice(0, 10);
 
-/* ── SM-2 spaced-repetition algorithm (simplified) ─────────────────────────
+/* ── FSRS (Free Spaced Repetition Scheduler) ───────────────────────────────
  *
- * Based on the SuperMemo SM-2 algorithm:
- *   - score < 50  → reset to 1 day  (exercise failed, review immediately)
- *   - score 50-79 → 3 days          (partial success, short review interval)
- *   - score ≥ 80  → double current interval (capped at 30 days)
+ * Remplace l'ancien algorithme SM-2 simplifié : les intervalles sont dérivés
+ * d'un modèle de mémoire (stabilité/difficulté) plutôt que d'un doublement
+ * fixe, ce qui s'adapte mieux à l'historique réel de chaque exercice.
+ *
+ * - enable_short_term: false — l'app ne propose qu'une tentative par exercice
+ *   par jour (quête du jour), pas de répétitions "dans 10 minutes" comme sur
+ *   une appli de flashcards ; on saute donc les paliers d'apprentissage courts.
+ * - maximum_interval: 90 — on ne laisse jamais un exercice de côté trop
+ *   longtemps, même très bien maîtrisé (le défaut de la librairie est 100 ans).
  */
-const prochainIntervalle = (score: number, intervalleActuel: number): number => {
-  if (score >= 80) return Math.min(Math.max(intervalleActuel * 2, 7), 30);
-  if (score >= 50) return 3;
-  return 1;
+const scheduler = fsrs({
+  request_retention: 0.9,
+  maximum_interval: 90,
+  enable_fuzz: false,
+  enable_short_term: false,
+});
+
+/** Convertit le score 0-100 obtenu à l'exercice en note qualitative FSRS. */
+const scoreVersRating = (score: number): Grade => {
+  if (score < 50) return Rating.Again;
+  if (score < 70) return Rating.Hard;
+  if (score < 90) return Rating.Good;
+  return Rating.Easy;
 };
 
-const addDays = (date: string, days: number): string => {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+interface RevisionRow {
+  prochaine_revision: string;
+  intervalle_jours: number;
+  nb_revisions: number;
+  stabilite: number | null;
+  difficulte: number | null;
+  etat: number;
+  nb_echecs: number;
+  derniere_revision: string | null;
+}
+
+/** Reconstruit la Card FSRS à partir de la ligne stockée en base. */
+const versCard = (row: RevisionRow): Card => ({
+  due: new Date(row.prochaine_revision),
+  stability: row.stabilite ?? 0,
+  difficulty: row.difficulte ?? 0,
+  elapsed_days: 0,
+  scheduled_days: row.intervalle_jours,
+  learning_steps: 0,
+  reps: row.nb_revisions,
+  lapses: row.nb_echecs,
+  state: row.etat as State,
+  last_review: row.derniere_revision ? new Date(row.derniere_revision) : undefined,
+});
 
 /**
  * Create or update the spaced-repetition record for a completed exercise.
  *
  * Called automatically after each result is saved via `saveResultat`.
- * If no record exists for the (user, exercise) pair, a new one is inserted.
- * Otherwise the next review date and interval are updated based on the score.
+ * If no record exists for the (user, exercise) pair, a new FSRS card is
+ * created. Otherwise the stored card state is rebuilt and advanced by one
+ * review, then persisted.
  *
  * @param idUtilisateur - The user's database id
  * @param idExercice    - The exercise's database id
@@ -40,26 +75,41 @@ export const updateRevision = async (
   score: number,
 ): Promise<void> => {
   const [rows] = await pool.execute(
-    'SELECT intervalle_jours, nb_revisions FROM Revisions WHERE id_utilisateur = ? AND id_exercice = ?',
+    `SELECT prochaine_revision, intervalle_jours, nb_revisions, stabilite, difficulte, etat, nb_echecs, derniere_revision
+     FROM Revisions WHERE id_utilisateur = ? AND id_exercice = ?`,
     [idUtilisateur, idExercice],
   ) as any[];
 
-  const existing = (rows as any[])[0];
-  const intervalleActuel = existing?.intervalle_jours ?? 1;
-  const nouvelIntervalle = prochainIntervalle(score, intervalleActuel);
-  const prochaine = addDays(today(), nouvelIntervalle);
+  const existing = (rows as RevisionRow[])[0];
+  const carteActuelle: Card = existing ? versCard(existing) : createEmptyCard();
+  const rating = scoreVersRating(score);
+  const maintenant = new Date();
+
+  const { card: carteMaj } = scheduler.next(carteActuelle, maintenant, rating);
+
+  const prochaine = carteMaj.due.toISOString().slice(0, 10);
+  const intervalle = Math.max(1, Math.round(carteMaj.scheduled_days));
 
   if (existing) {
     await pool.execute(
-      `UPDATE Revisions SET prochaine_revision = ?, intervalle_jours = ?, nb_revisions = nb_revisions + 1
+      `UPDATE Revisions SET prochaine_revision = ?, intervalle_jours = ?, nb_revisions = ?,
+         stabilite = ?, difficulte = ?, etat = ?, nb_echecs = ?, derniere_revision = ?
        WHERE id_utilisateur = ? AND id_exercice = ?`,
-      [prochaine, nouvelIntervalle, idUtilisateur, idExercice],
+      [
+        prochaine, intervalle, carteMaj.reps,
+        carteMaj.stability, carteMaj.difficulty, carteMaj.state, carteMaj.lapses, maintenant,
+        idUtilisateur, idExercice,
+      ],
     );
   } else {
     await pool.execute(
-      `INSERT INTO Revisions (id_utilisateur, id_exercice, prochaine_revision, intervalle_jours, nb_revisions)
-       VALUES (?, ?, ?, ?, 1)`,
-      [idUtilisateur, idExercice, prochaine, nouvelIntervalle],
+      `INSERT INTO Revisions
+         (id_utilisateur, id_exercice, prochaine_revision, intervalle_jours, nb_revisions, stabilite, difficulte, etat, nb_echecs, derniere_revision)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        idUtilisateur, idExercice, prochaine, intervalle, carteMaj.reps,
+        carteMaj.stability, carteMaj.difficulty, carteMaj.state, carteMaj.lapses, maintenant,
+      ],
     );
   }
 };
@@ -68,7 +118,7 @@ export const updateRevision = async (
  * Build the daily quest (up to 10 exercises) for the authenticated user.
  *
  * Priority order:
- *   1. Exercises due for review today (SM-2 `prochaine_revision <= today`)
+ *   1. Exercises due for review today (FSRS `prochaine_revision <= today`)
  *   2. Exercises never attempted by the user (random order)
  *
  * Also returns whether the quest is already complete for today.
