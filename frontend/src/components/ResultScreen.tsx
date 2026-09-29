@@ -201,6 +201,13 @@ const ResultScreen = ({ score, bonnes, total, onRejouer }: Props) => {
 				<p className="rs-message">{tier.message}</p>
 
 				<div className="rs-actions">
+					<button
+						type="button"
+						className="rs-btn rs-btn--outline"
+						onClick={() => navigate(-1)}
+					>
+						Retour aux exercices
+					</button>
 					{onRejouer && (
 						<button
 							type="button"

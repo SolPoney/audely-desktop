@@ -61,11 +61,15 @@ const ParcoursListePage = () => {
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		Promise.all([
-			fetch(`${API_URL}/api/exercices`).then(r => r.json()),
+			// Liste affichée : uniquement les exercices de ce niveau (contenu complet)
+			fetch(`${API_URL}/api/niveaux/${niveau}/exercices`).then(r => r.json()),
+			// Déblocage : id/niveau/categorie_id de TOUS les exercices (nécessaire pour
+			// vérifier les niveaux précédents), sans télécharger leur contenu JSON
+			fetch(`${API_URL}/api/exercices/minimal`).then(r => r.json()),
 			fetch(`${API_URL}/api/stats/completes`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
-		]).then(([data, done]) => {
-			setExercices(data.filter((ex: any) => ex.niveau === niveau));
-			setTousLesExercices(data);
+		]).then(([data, minimal, done]) => {
+			setExercices(data);
+			setTousLesExercices(minimal);
 			setCompletes(new Set(done as number[]));
 			setChargement(false);
 		});

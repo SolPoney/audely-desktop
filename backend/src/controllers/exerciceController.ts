@@ -21,6 +21,31 @@ export const getCategories = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Version allégée de tous les exercices (id, niveau, categorie_id seulement,
+ * sans le contenu JSON) — utilisée pour calculer le déblocage/progression
+ * côté client sans télécharger tout le contenu de chaque exercice.
+ */
+export const getExercicesMinimal = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.execute('SELECT id, niveau, categorie_id FROM Exercices');
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
+export const getExercicesParNiveau = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.execute('SELECT * FROM Exercices WHERE niveau = ?', [req.params.niveau]);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 export const getExerciceById = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.execute('SELECT * FROM Exercices WHERE id = ?', [req.params.id]);

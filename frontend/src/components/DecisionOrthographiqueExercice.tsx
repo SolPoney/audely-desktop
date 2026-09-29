@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { X, ChevronRight } from "lucide-react";
 import { lireTexte, arreterLectureAudio } from "../utils/tts";
-import { getFeedbackMessage } from "../utils/feedback";
 import { enregistrerResultat } from "../utils/resultats";
+import ResultScreen from "./ResultScreen";
 
 interface MotItem {
 	mot: string;
@@ -37,6 +37,9 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	const [jouant, setJouant]     = useState(false);
 
 	const question = mots[index];
+
+	/* Coupe l'audio TTS en cours si le composant est démonté (navigation, fermeture) */
+	useEffect(() => () => arreterLectureAudio(), []);
 
 	const jouer = useCallback(() => {
 		if (!question || jouant) return;
@@ -75,37 +78,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / total) * 100);
-		return (
-			<div className="det-result">
-				<h1 className="det-result-score">
-					{score} / {total} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
-				</h1>
-				<div className="ep-result-ring" aria-hidden="true">
-					<svg viewBox="0 0 120 120" width="180" height="180">
-						<circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10" />
-						<circle
-							cx="60" cy="60" r="50"
-							fill="none" stroke="#0D9488" strokeWidth="10"
-							strokeLinecap="round"
-							strokeDasharray={2 * Math.PI * 50}
-							strokeDashoffset={2 * Math.PI * 50 * (1 - pct / 100)}
-							transform="rotate(-90 60 60)"
-						/>
-						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">{pct}%</text>
-						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
-					</svg>
-				</div>
-				<p className="det-result-message">{getFeedbackMessage(score, total)}</p>
-				<div className="det-result-actions">
-					<button type="button" className="det-btn-outline" onClick={() => { arreterLectureAudio(); navigate(-1); }}>
-						Retour aux exercices
-					</button>
-					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>
-						Continuer
-					</button>
-				</div>
-			</div>
-		);
+		return <ResultScreen score={pct} bonnes={score} total={total} />;
 	}
 
 	if (!question) return null;

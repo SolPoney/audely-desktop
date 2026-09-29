@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { X, Play, Pause, Clock } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
-import { getFeedbackMessage } from "../utils/feedback";
 import { enregistrerResultat } from "../utils/resultats";
+import ResultScreen from "./ResultScreen";
 
 interface Props {
 	exercice: {
@@ -160,37 +160,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 	/* ── Écran résultats ── */
 	if (ecran === "resultats") {
 		const pct = total > 0 ? Math.round((bonnes / total) * 100) : 0;
-		return (
-			<div className="det-result">
-				<h1 className="det-result-score">
-					{bonnes} / {total} bonne{bonnes > 1 ? "s" : ""} réponse{bonnes > 1 ? "s" : ""}
-				</h1>
-				<div className="ep-result-ring" aria-hidden="true">
-					<svg viewBox="0 0 120 120" width="180" height="180">
-						<circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10" />
-						<circle
-							cx="60" cy="60" r="50"
-							fill="none" stroke="#0D9488" strokeWidth="10"
-							strokeLinecap="round"
-							strokeDasharray={2 * Math.PI * 50}
-							strokeDashoffset={2 * Math.PI * 50 * (1 - pct / 100)}
-							transform="rotate(-90 60 60)"
-						/>
-						<text x="60" y="55" textAnchor="middle" fontSize="20" fontWeight="800" fill="#0F172A">{pct}%</text>
-						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
-					</svg>
-				</div>
-				<p className="det-result-message">{getFeedbackMessage(bonnes, total)}</p>
-				<div className="det-result-actions">
-					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>
-						Retour aux exercices
-					</button>
-					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>
-						Continuer
-					</button>
-				</div>
-			</div>
-		);
+		return <ResultScreen score={pct} bonnes={bonnes} total={total} />;
 	}
 
 	/* ── Écran exercice ── */

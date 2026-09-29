@@ -36,53 +36,100 @@ export const getStats = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ message: 'Non autorisé' });
 
-    // 1. Score moyen par type d'exercice
-    const [parType] = await pool.execute(`
-      SELECT
-        e.type_exercice,
-        COUNT(r.id)          AS nb_sessions,
-        ROUND(AVG(r.score))  AS score_moyen,
-        MAX(r.score)         AS meilleur_score
-      FROM Resultats r
-      JOIN Exercices e ON r.id_exercice = e.id
-      WHERE r.id_utilisateur = ?
-      GROUP BY e.type_exercice
-      ORDER BY score_moyen DESC
-    `, [userId]);
+    // Toutes ces requêtes ne dépendent que de userId (aucune des autres) :
+    // elles partent en parallèle plutôt qu'en 9 allers-retours séquentiels
+    // vers la base distante (pool limité à 4 connexions simultanées, donc
+    // toujours plus rapide qu'un enchaînement séquentiel).
+    const [
+      [parType],
+      [historique],
+      [global],
+      [jours],
+      [xpRes],
+      [facileDoneRes],
+      [facileTotalRes],
+      [moyenRes],
+      [progressionRaw],
+    ] = await Promise.all([
+      // 1. Score moyen par type d'exercice
+      pool.execute(`
+        SELECT
+          e.type_exercice,
+          COUNT(r.id)          AS nb_sessions,
+          ROUND(AVG(r.score))  AS score_moyen,
+          MAX(r.score)         AS meilleur_score
+        FROM Resultats r
+        JOIN Exercices e ON r.id_exercice = e.id
+        WHERE r.id_utilisateur = ?
+        GROUP BY e.type_exercice
+        ORDER BY score_moyen DESC
+      `, [userId]),
 
-    // 2. 10 dernières sessions
-    const [historique] = await pool.execute(`
-      SELECT
-        r.id,
-        r.score,
-        r.date_session,
-        e.titre,
-        e.type_exercice,
-        e.niveau
-      FROM Resultats r
-      JOIN Exercices e ON r.id_exercice = e.id
-      WHERE r.id_utilisateur = ?
-      ORDER BY r.date_session DESC
-      LIMIT 10
-    `, [userId]);
+      // 2. 10 dernières sessions
+      pool.execute(`
+        SELECT
+          r.id,
+          r.score,
+          r.date_session,
+          e.titre,
+          e.type_exercice,
+          e.niveau
+        FROM Resultats r
+        JOIN Exercices e ON r.id_exercice = e.id
+        WHERE r.id_utilisateur = ?
+        ORDER BY r.date_session DESC
+        LIMIT 10
+      `, [userId]),
 
-    // 3. Global
-    const [global] = await pool.execute(`
-      SELECT
-        COUNT(*)                     AS total_sessions,
-        ROUND(AVG(score))            AS score_global,
-        COALESCE(MAX(score), 0)      AS meilleur_score
-      FROM Resultats
-      WHERE id_utilisateur = ?
-    `, [userId]) as any[];
+      // 3. Global
+      pool.execute(`
+        SELECT
+          COUNT(*)                     AS total_sessions,
+          ROUND(AVG(score))            AS score_global,
+          COALESCE(MAX(score), 0)      AS meilleur_score
+        FROM Resultats
+        WHERE id_utilisateur = ?
+      `, [userId]),
 
-    // 4. Streak
-    const [jours] = await pool.execute(`
-      SELECT DISTINCT DATE(date_session) AS jour
-      FROM Resultats
-      WHERE id_utilisateur = ?
-      ORDER BY jour DESC
-    `, [userId]) as any[];
+      // 4. Streak (dates distinctes des sessions)
+      pool.execute(`
+        SELECT DISTINCT DATE(date_session) AS jour
+        FROM Resultats
+        WHERE id_utilisateur = ?
+        ORDER BY jour DESC
+      `, [userId]),
+
+      // 5. XP
+      pool.execute(`
+        SELECT COALESCE(SUM(
+          r.score * CASE e.niveau WHEN 'facile' THEN 0.15 WHEN 'moyen' THEN 0.25 ELSE 0.35 END
+        ), 0) AS total_xp
+        FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
+        WHERE r.id_utilisateur = ?
+      `, [userId]),
+
+      // 6. Données pour les badges (le max/total_sessions réutilise "global" ci-dessus)
+      pool.execute(`
+        SELECT COUNT(DISTINCT r.id_exercice) as done
+        FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
+        WHERE r.id_utilisateur = ? AND e.niveau = 'facile'
+      `, [userId]),
+      pool.execute("SELECT COUNT(*) as total FROM Exercices WHERE niveau='facile'", []),
+      pool.execute(`
+        SELECT COUNT(DISTINCT r.id_exercice) as nb
+        FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
+        WHERE r.id_utilisateur = ? AND e.niveau = 'moyen'
+      `, [userId]),
+
+      // 7. Historique des 20 dernières sessions pour le graphique
+      pool.execute(`
+        SELECT r.score, DATE_FORMAT(r.date_session, '%d/%m') AS date_label
+        FROM Resultats r
+        WHERE r.id_utilisateur = ?
+        ORDER BY r.date_session DESC
+        LIMIT 20
+      `, [userId]),
+    ]) as any[];
 
     // Le jour le plus récent avec un exercice doit être aujourd'hui OU hier
     // (délai de grâce : ne pas casser une série de 30 jours juste parce que
@@ -108,31 +155,8 @@ export const getStats = async (req: Request, res: Response) => {
       }
     }
 
-    // 5. XP
-    const [xpRes] = await pool.execute(`
-      SELECT COALESCE(SUM(
-        r.score * CASE e.niveau WHEN 'facile' THEN 0.15 WHEN 'moyen' THEN 0.25 ELSE 0.35 END
-      ), 0) AS total_xp
-      FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
-      WHERE r.id_utilisateur = ?
-    `, [userId]) as any[];
     const totalXP = Math.round((xpRes as any[])[0].total_xp);
     const niveauInfo = getNiveau(totalXP);
-
-    // 6. Données pour les badges (réutilise "global" — même comptage/max déjà calculé au point 3)
-    const [facileDoneRes] = await pool.execute(`
-      SELECT COUNT(DISTINCT r.id_exercice) as done
-      FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
-      WHERE r.id_utilisateur = ? AND e.niveau = 'facile'
-    `, [userId]) as any[];
-    const [facileTotalRes] = await pool.execute(
-      "SELECT COUNT(*) as total FROM Exercices WHERE niveau='facile'", []
-    ) as any[];
-    const [moyenRes] = await pool.execute(`
-      SELECT COUNT(DISTINCT r.id_exercice) as nb
-      FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
-      WHERE r.id_utilisateur = ? AND e.niveau = 'moyen'
-    `, [userId]) as any[];
 
     const maxScore = (global as any[])[0].meilleur_score;
     const totalSessions = (global as any[])[0].total_sessions;
@@ -192,15 +216,6 @@ export const getStats = async (req: Request, res: Response) => {
       { id: 'serie_365', emoji: '🌟', titre: 'Interstellaire', description: '365 jours consécutifs', unlocked: streak >= 365 },
     ];
 
-    // 7. Historique des 20 dernières sessions pour le graphique
-    const [progression] = await pool.execute(`
-      SELECT r.score, DATE_FORMAT(r.date_session, '%d/%m') AS date_label
-      FROM Resultats r
-      WHERE r.id_utilisateur = ?
-      ORDER BY r.date_session DESC
-      LIMIT 20
-    `, [userId]);
-
     res.json({
       global: (global as any[])[0],
       parType,
@@ -210,7 +225,7 @@ export const getStats = async (req: Request, res: Response) => {
       xp: totalXP,
       niveau: niveauInfo,
       badges,
-      progression: (progression as any[]).reverse(),
+      progression: (progressionRaw as any[]).reverse(),
     });
   } catch (err) {
     console.error(err);
