@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
 import { X, ChevronRight } from "lucide-react";
+import { lireTexte, arreterLectureAudio } from "../utils/tts";
+import { getFeedbackMessage } from "../utils/feedback";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface MotItem {
 	mot: string;
@@ -17,31 +19,6 @@ interface Props {
 		contenu: { mots: MotItem[]; instructions?: string };
 	};
 }
-
-let audioEnCours: HTMLAudioElement | null = null;
-
-const lire = (texte: string, onEnd?: () => void) => {
-	if (audioEnCours) { audioEnCours.pause(); audioEnCours.src = ""; audioEnCours = null; }
-	const audio = new Audio(`${API_URL}/api/tts?q=${encodeURIComponent(texte)}`);
-	audioEnCours = audio;
-	if (onEnd) audio.addEventListener("ended", onEnd, { once: true });
-	audio.play().catch(() => {
-		if (!window.speechSynthesis) return;
-		window.speechSynthesis.cancel();
-		const utt = new SpeechSynthesisUtterance(texte);
-		utt.lang = "fr-FR"; utt.rate = 0.88;
-		if (onEnd) utt.addEventListener("end", onEnd, { once: true });
-		window.speechSynthesis.speak(utt);
-	});
-};
-
-const getMessage = (score: number, total: number) => {
-	const r = score / total;
-	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
-	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
-	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
-	return "Ne vous découragez pas, réessayez !";
-};
 
 const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
@@ -64,7 +41,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	const jouer = useCallback(() => {
 		if (!question || jouant) return;
 		setJouant(true);
-		lire(question.mot, () => {
+		lireTexte(API_URL, question.mot, () => {
 			setAEcoute(true);
 			setJouant(false);
 		});
@@ -88,16 +65,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-				body: JSON.stringify({
-					id_utilisateur: getUserId(),
-					id_exercice: exercice.id,
-					score: Math.round((score / total) * 100),
-				}),
-			});
+			await enregistrerResultat(exercice.id, Math.round((score / total) * 100));
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
@@ -127,9 +95,9 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(score, total)}</p>
+				<p className="det-result-message">{getFeedbackMessage(score, total)}</p>
 				<div className="det-result-actions">
-					<button type="button" className="det-btn-outline" onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}>
+					<button type="button" className="det-btn-outline" onClick={() => { arreterLectureAudio(); navigate(-1); }}>
 						Retour aux exercices
 					</button>
 					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>
@@ -149,7 +117,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 				<button
 					type="button"
 					className="ep-close"
-					onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}
+					onClick={() => { arreterLectureAudio(); navigate(-1); }}
 					aria-label="Fermer"
 				>
 					<X size={18} strokeWidth={2.5} />

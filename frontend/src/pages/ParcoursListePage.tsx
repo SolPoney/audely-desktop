@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Timer, Music2, Shuffle, Ruler, Headphones, BookOpen, Lock, CheckCircle2, Brain, ChevronRight, Unlock } from "lucide-react";
 import { API_URL } from "../config/api";
+import { isExerciceUnlocked } from "../utils/progression";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
 	detecter:                <Timer      size={18} strokeWidth={1.6} color="white" />,
@@ -53,6 +54,7 @@ const ParcoursListePage = () => {
 	const { niveau } = useParams<{ niveau: string }>();
 	const navigate   = useNavigate();
 	const [exercices, setExercices]   = useState<any[]>([]);
+	const [tousLesExercices, setTousLesExercices] = useState<any[]>([]);
 	const [completes, setCompletes]   = useState<Set<number>>(new Set());
 	const [chargement, setChargement] = useState(true);
 
@@ -63,6 +65,7 @@ const ParcoursListePage = () => {
 			fetch(`${API_URL}/api/stats/completes`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => []),
 		]).then(([data, done]) => {
 			setExercices(data.filter((ex: any) => ex.niveau === niveau));
+			setTousLesExercices(data);
 			setCompletes(new Set(done as number[]));
 			setChargement(false);
 		});
@@ -71,12 +74,8 @@ const ParcoursListePage = () => {
 	const config = NIVEAU_CONFIG[niveau ?? ""] ?? NIVEAU_CONFIG.facile;
 	const barres = NIVEAU_BARRES[niveau ?? ""] ?? 1;
 
-	/* Un exo est accessible s'il est déjà complété, ou si le précédent est complété */
-	const isUnlocked = (index: number) => {
-		if (completes.has(exercices[index].id)) return true;
-		if (index === 0) return true;
-		return completes.has(exercices[index - 1].id);
-	};
+	/* Même règle de déblocage que ExercicePage/ExercicesCatPage (par catégorie et niveau) */
+	const isUnlocked = (index: number) => isExerciceUnlocked(exercices[index], tousLesExercices, completes);
 
 	const nbCompletes = exercices.filter(ex => completes.has(ex.id)).length;
 

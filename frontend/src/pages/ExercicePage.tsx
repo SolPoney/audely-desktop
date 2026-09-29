@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
 import { toast } from "sonner";
 import { useTheme } from "../hooks/useTheme";
 import DetecterExercice from "../components/DetecterExercice";
@@ -12,11 +11,11 @@ import CourtMoyenLongExercice from "../components/CourtMoyenLongExercice";
 import ExercicePartenaire from "../components/ExercicePartenaire";
 import DecisionOrthographiqueExercice from "../components/DecisionOrthographiqueExercice";
 import GraveAiguExercice from "../components/GraveAiguExercice";
+import { isExerciceUnlocked } from "../utils/progression";
+import { enregistrerResultat } from "../utils/resultats";
 
 /* Hauteurs des barres de la waveform décorative */
 const WAVEFORM_HEIGHTS = [20, 35, 50, 30, 60, 45, 70, 40, 55, 30, 65, 50, 35, 60, 25, 45, 70, 40, 30, 55];
-
-const NIVEAUX = ["facile", "moyen", "difficile"];
 
 const ExercicePage = () => {
 	const { id } = useParams();
@@ -40,27 +39,7 @@ const ExercicePage = () => {
 			fetch(`${API_URL}/api/categories/${exo.categorie_id}/exercices`)
 				.then(r => r.json())
 				.then((tous: any[]) => {
-					const grouped: Record<string, any[]> = { facile: [], moyen: [], difficile: [] };
-					tous.forEach(e => { if (grouped[e.niveau]) grouped[e.niveau].push(e); });
-
-					const niveauIdx   = NIVEAUX.indexOf(exo.niveau);
-					const exosDuNiveau = grouped[exo.niveau] ?? [];
-					const posInNiveau  = exosDuNiveau.findIndex((e: any) => e.id === exo.id);
-
-					// Si déjà complété → toujours accessible
-					if (completesSet.has(exo.id)) { setAcces("ok"); return; }
-
-					// Tous les niveaux précédents doivent être complétés
-					for (let n = 0; n < niveauIdx; n++) {
-						if ((grouped[NIVEAUX[n]] ?? []).some((e: any) => !completesSet.has(e.id))) {
-							setAcces("bloque"); return;
-						}
-					}
-					// Pour le niveau actuel, l'exercice précédent doit être complété
-					if (posInNiveau > 0 && !completesSet.has(exosDuNiveau[posInNiveau - 1].id)) {
-						setAcces("bloque"); return;
-					}
-					setAcces("ok");
+					setAcces(isExerciceUnlocked(exo, tous, completesSet) ? "ok" : "bloque");
 				})
 				.catch(() => setAcces("ok")); // En cas d'erreur réseau, on laisse passer
 		});
@@ -154,19 +133,7 @@ const ExercicePage = () => {
 
 	/* — Interface standard pour les autres types */
 	const handleSubmit = async (score: number) => {
-		const token = localStorage.getItem("token");
-		await fetch(`${API_URL}/api/resultats`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${token}`,
-			},
-			body: JSON.stringify({
-				id_utilisateur: getUserId(),
-				id_exercice: Number(id),
-				score,
-			}),
-		});
+		await enregistrerResultat(Number(id), score);
 		toast.success("Exercice terminé !", {
 			description: "Votre résultat a bien été enregistré.",
 		});

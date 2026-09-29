@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Equal, Divide, ChevronRight } from "lucide-react";
-import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
 import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
+import { getFeedbackMessage } from "../utils/feedback";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface Props {
 	exercice: { id: number; titre: string; niveau: string };
@@ -50,14 +50,6 @@ const tirerQuestion = (frequences: number[]): { sonA: number; sonB: number; repo
 		freqB = frequences[Math.floor(Math.random() * frequences.length)];
 	}
 	return { sonA: freqA, sonB: freqB, reponseCorrecte: "different" };
-};
-
-const getMessage = (nb: number, total: number) => {
-	const r = nb / total;
-	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
-	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
-	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
-	return "Ne vous découragez pas, réessayez !";
 };
 
 const DistinguerExercice = ({ exercice }: Props) => {
@@ -114,16 +106,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (questionNum >= totalQuestions) {
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-				body: JSON.stringify({
-					id_utilisateur: getUserId(),
-					id_exercice: exercice.id,
-					score: Math.round((score / totalQuestions) * 100),
-				}),
-			});
+			await enregistrerResultat(exercice.id, Math.round((score / totalQuestions) * 100));
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
@@ -158,7 +141,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(score, totalQuestions)}</p>
+				<p className="det-result-message">{getFeedbackMessage(score, totalQuestions)}</p>
 				<div className="det-result-actions">
 					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
 					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>

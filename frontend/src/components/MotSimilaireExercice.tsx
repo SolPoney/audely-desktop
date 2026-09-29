@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
 import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
+import { lireTexte, arreterLectureAudio } from "../utils/tts";
+import { getFeedbackMessage } from "../utils/feedback";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface Props {
 	exercice: {
@@ -17,37 +19,12 @@ type Phase = "serie" | "cible" | "reponse" | "feedback";
 
 const TOTAL_QUESTIONS = 8;
 
-const getMessage = (score: number, total: number) => {
-	const r = score / total;
-	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
-	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
-	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
-	return "Ne vous découragez pas, réessayez !";
-};
-
-let audioEnCours: HTMLAudioElement | null = null;
-
-const lire = (texte: string, onEnd?: () => void) => {
-	if (audioEnCours) { audioEnCours.pause(); audioEnCours.src = ""; audioEnCours = null; }
-	const audio = new Audio(`${API_URL}/api/tts?q=${encodeURIComponent(texte)}`);
-	audioEnCours = audio;
-	if (onEnd) audio.addEventListener("ended", onEnd, { once: true });
-	audio.play().catch(() => {
-		if (!window.speechSynthesis) { if (onEnd) onEnd(); return; }
-		window.speechSynthesis.cancel();
-		const utt = new SpeechSynthesisUtterance(texte);
-		utt.lang = "fr-FR"; utt.rate = 0.85;
-		if (onEnd) utt.addEventListener("end", onEnd, { once: true });
-		window.speechSynthesis.speak(utt);
-	});
-};
-
 /* Joue les mots de la série deux fois puis appelle onEnd */
 const jouerSerie = (mots: string[], onEnd: () => void) => {
 	const serie = [...mots, ...mots]; // x2
 	const jouerMot = (i: number) => {
 		if (i >= serie.length) { onEnd(); return; }
-		lire(serie[i], () => setTimeout(() => jouerMot(i + 1), 400));
+		lireTexte(API_URL, serie[i], () => setTimeout(() => jouerMot(i + 1), 400), 0.85);
 	};
 	jouerMot(0);
 };
@@ -86,7 +63,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 			// Pause 800ms puis jouer la cible
 			setTimeout(() => {
 				setPhase("cible");
-				lire(question.cible, () => {
+				lireTexte(API_URL, question.cible, () => {
 					setPhase("reponse");
 					setJouant(false);
 				});
@@ -111,16 +88,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-				body: JSON.stringify({
-					id_utilisateur: getUserId(),
-					id_exercice: exercice.id,
-					score: Math.round((score / total) * 100),
-				}),
-			});
+			await enregistrerResultat(exercice.id, Math.round((score / total) * 100));
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
@@ -150,9 +118,9 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(score, total)}</p>
+				<p className="det-result-message">{getFeedbackMessage(score, total)}</p>
 				<div className="det-result-actions">
-					<button type="button" className="det-btn-outline" onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}>
+					<button type="button" className="det-btn-outline" onClick={() => { arreterLectureAudio(); navigate(-1); }}>
 						Retour aux exercices
 					</button>
 					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>
@@ -174,7 +142,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 				<button
 					type="button"
 					className="ep-close"
-					onClick={() => { if (audioEnCours) { audioEnCours.pause(); audioEnCours = null; } navigate(-1); }}
+					onClick={() => { arreterLectureAudio(); navigate(-1); }}
 					aria-label="Fermer"
 				>
 					<X size={18} strokeWidth={2.5} />

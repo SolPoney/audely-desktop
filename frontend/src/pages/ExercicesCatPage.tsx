@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Timer, Music2, Shuffle, Ruler, Headphones, BookOpen, Lock, CheckCircle2, Brain, ChevronRight, Unlock } from "lucide-react";
 import { API_URL } from "../config/api";
+import { NIVEAU_LABEL } from "../utils/niveau";
+import { isExerciceUnlocked } from "../utils/progression";
 
 const CAT_GRADIENT = "linear-gradient(160deg, #1E1035 0%, #3B1D70 40%, #7C3AED 100%)";
 const CAT_COLOR    = "#7C3AED";
 
 const NIVEAUX: string[] = ["facile", "moyen", "difficile"];
-const NIVEAU_LABEL: Record<string, string> = { facile: "Facile", moyen: "Moyen", difficile: "Difficile" };
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
 	detecter:                <Timer      size={18} strokeWidth={1.6} color="white" />,
@@ -55,28 +56,6 @@ const ExercicesCatPage = () => {
 			setLoading(false);
 		}).catch(() => setLoading(false));
 	}, [id]);
-
-	/* ── Logique de progression ── */
-	const isUnlocked = (ex: any, index: number, grouped: Record<string, any[]>) => {
-		const niveau = ex.niveau as string;
-		const niveauIdx = NIVEAUX.indexOf(niveau);
-
-		// Niveau facile : premier exo toujours disponible,
-		// les suivants s'ouvrent dès que le précédent est complété
-		const exosDuNiveau = grouped[niveau] ?? [];
-		const posInNiveau  = exosDuNiveau.findIndex((e: any) => e.id === ex.id);
-
-		// Vérifier que tous les niveaux précédents sont terminés
-		for (let n = 0; n < niveauIdx; n++) {
-			const exosPrecedents = grouped[NIVEAUX[n]] ?? [];
-			if (exosPrecedents.some((e: any) => !completes.has(e.id))) return false;
-		}
-
-		// Premier exo du niveau → toujours ouvert (si niveaux précédents OK)
-		if (posInNiveau === 0) return true;
-		// Exos suivants → le précédent doit être complété
-		return completes.has(exosDuNiveau[posInNiveau - 1].id);
-	};
 
 	/* Regrouper par niveau dans l'ordre */
 	const grouped: Record<string, any[]> = { facile: [], moyen: [], difficile: [] };
@@ -147,7 +126,7 @@ const ExercicesCatPage = () => {
 									<ol className="pl-timeline">
 										{exos.map((ex: any, i: number) => {
 											const done     = completes.has(ex.id);
-											const unlocked = isUnlocked(ex, i, grouped);
+											const unlocked = isExerciceUnlocked(ex, exercices, completes);
 											return (
 												<li
 													key={ex.id}

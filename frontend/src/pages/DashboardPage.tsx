@@ -6,24 +6,14 @@ import {
 	Flame, Zap,
 } from "lucide-react";
 import { API_URL } from "../config/api";
-
-const getPrenom = (): string => {
-	try {
-		const token = localStorage.getItem("token");
-		if (!token) return "";
-		const payload = JSON.parse(atob(token.split(".")[1]));
-		return payload.prenom || "";
-	} catch {
-		return "";
-	}
-};
+import { getUser } from "../hooks/useAuth";
 
 interface Niveau { nom: string; niveau: number; prevXP: number; nextXP: number | null; xpPct: number; }
 
 const DashboardPage = () => {
 	const navigate = useNavigate();
 	const { theme, toggleTheme } = useTheme();
-	const prenom = getPrenom();
+	const prenom = getUser()?.prenom ?? "";
 
 	const [xp, setXp]               = useState<number | null>(null);
 	const [niveau, setNiveau]        = useState<Niveau | null>(null);

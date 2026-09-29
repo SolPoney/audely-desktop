@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
 import { X, Play, Pause, Clock } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
+import { getFeedbackMessage } from "../utils/feedback";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface Props {
 	exercice: {
@@ -53,14 +53,6 @@ const calculerBonnesReponses = (sons: number[], clics: number[], tolerance: numb
 	return bonnes;
 };
 
-const getMessage = (bonnes: number, total: number): string => {
-	if (total === 0) return "Exercice terminé !";
-	const ratio = bonnes / total;
-	if (ratio >= 1) return "Score parfait ! Excellent travail.";
-	if (ratio >= 0.75) return "Très bien ! Poursuivez vos efforts !";
-	if (ratio >= 0.5) return "Pas mal ! Continuez à vous entraîner.";
-	return "Ne vous découragez pas, réessayez !";
-};
 
 
 const DetecterExercice = ({ exercice }: Props) => {
@@ -129,21 +121,10 @@ const DetecterExercice = ({ exercice }: Props) => {
 			setTotal(soundTimes.current.length);
 			setStatut("termine");
 
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
-				body: JSON.stringify({
-					id_utilisateur: getUserId(),
-					id_exercice: exercice.id,
-					score: soundTimes.current.length > 0
-						? Math.round((bonnesR / soundTimes.current.length) * 100)
-						: 0,
-				}),
-			});
+			const score = soundTimes.current.length > 0
+				? Math.round((bonnesR / soundTimes.current.length) * 100)
+				: 0;
+			await enregistrerResultat(exercice.id, score);
 		}, params.duree * 1000);
 
 		timersRef.current = [
@@ -199,7 +180,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(bonnes, total)}</p>
+				<p className="det-result-message">{getFeedbackMessage(bonnes, total)}</p>
 				<div className="det-result-actions">
 					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>
 						Retour aux exercices

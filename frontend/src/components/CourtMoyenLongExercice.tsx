@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
-import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
+import { getFeedbackMessage } from "../utils/feedback";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface Props {
 	exercice: { id: number; titre: string; niveau: string };
@@ -41,13 +41,6 @@ const tirerDuree = (): Duree => {
 	return options[Math.floor(Math.random() * options.length)];
 };
 
-const getMessage = (nb: number) => {
-	const r = nb / TOTAL;
-	if (r >= 1)    return "Score parfait ! Excellente discrimination !";
-	if (r >= 0.75) return "Très bien ! Poursuivez vos efforts !";
-	if (r >= 0.5)  return "Pas mal ! Continuez à vous entraîner.";
-	return "Ne vous découragez pas, réessayez !";
-};
 
 const CourtMoyenLongExercice = ({ exercice }: Props) => {
 	const navigate = useNavigate();
@@ -77,16 +70,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (questionNum >= TOTAL) {
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-				body: JSON.stringify({
-					id_utilisateur: getUserId(),
-					id_exercice: exercice.id,
-					score: Math.round((score / TOTAL) * 100),
-				}),
-			});
+			await enregistrerResultat(exercice.id, Math.round((score / TOTAL) * 100));
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
@@ -120,7 +104,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 						<text x="60" y="75" textAnchor="middle" fontSize="11" fill="#64748B">Score</text>
 					</svg>
 				</div>
-				<p className="det-result-message">{getMessage(score)}</p>
+				<p className="det-result-message">{getFeedbackMessage(score, TOTAL)}</p>
 				<div className="det-result-actions">
 					<button type="button" className="det-btn-outline" onClick={() => navigate(-1)}>Retour aux exercices</button>
 					<button type="button" className="det-btn-noir" onClick={() => navigate("/dashboard")}>Continuer</button>
