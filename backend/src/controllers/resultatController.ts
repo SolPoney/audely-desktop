@@ -3,26 +3,29 @@ import { Request, Response } from 'express';
 import { updateRevision } from './queteController.js';
 
 /**
- * Save an exercise result and update the spaced-repetition schedule (SM-2).
+ * Save an exercise result and update the spaced-repetition schedule (FSRS).
  *
- * Validates that `id_utilisateur`, `id_exercice` and `score` are present and
- * have the expected types before writing to the database.
+ * The user id is taken from the verified JWT (`req.user.id`), never from the
+ * request body — a client cannot write results for another account.
+ * Validates that `id_exercice` and `score` are present and have the expected
+ * types before writing to the database.
  *
  * @route POST /api/resultats
  * @access Private (JWT required)
  */
 export const saveResultat = async (req: Request, res: Response) => {
   try {
-    const { id_utilisateur, id_exercice, score } = req.body;
+    const userId = (req as any).user?.id;
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: 'Non autorisé' });
+    }
+
+    const { id_exercice, score } = req.body;
 
     // ── Input validation ──────────────────────────────────────────────────────
-    const userId = Number(id_utilisateur);
     const exerciceId = Number(id_exercice);
     const scoreNum = Number(score);
 
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return res.status(400).json({ message: 'id_utilisateur invalide.' });
-    }
     if (!Number.isInteger(exerciceId) || exerciceId <= 0) {
       return res.status(400).json({ message: 'id_exercice invalide.' });
     }
@@ -35,7 +38,7 @@ export const saveResultat = async (req: Request, res: Response) => {
       [userId, exerciceId, scoreNum]
     );
 
-    // Update spaced-repetition schedule (SM-2 algorithm)
+    // Update spaced-repetition schedule (FSRS algorithm)
     await updateRevision(userId, exerciceId, scoreNum);
 
     res.status(201).json({ message: 'Résultat enregistré' });

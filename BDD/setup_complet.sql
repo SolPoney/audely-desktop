@@ -91,6 +91,7 @@ CREATE TABLE Revisions (
   nb_echecs           INT NOT NULL DEFAULT 0,
   derniere_revision   DATETIME DEFAULT NULL,
   PRIMARY KEY (id),
+  UNIQUE KEY uniq_utilisateur_exercice (id_utilisateur, id_exercice),
   CONSTRAINT FK_Revisions_Utilisateur FOREIGN KEY (id_utilisateur)
     REFERENCES Utilisateur(id) ON DELETE CASCADE,
   CONSTRAINT FK_Revisions_Exercices FOREIGN KEY (id_exercice)

@@ -20,7 +20,7 @@ const makeRes = () => {
 };
 
 // ─────────────────────────────────────────────────────────
-// Helper : mock les 10 requêtes SQL de getStats dans l'ordre
+// Helper : mock les 9 requêtes SQL de getStats dans l'ordre
 // ─────────────────────────────────────────────────────────
 interface StatsOverrides {
   xp?: number;
@@ -53,14 +53,10 @@ const setupGetStats = ({
       streak_jours.map(j => ({ jour: j })),
     ])
     .mockResolvedValueOnce([[{ total_xp: xp }]])        // 5. xpRes
-    .mockResolvedValueOnce([[{                          // 6. maxScoreRes
-      max_score: maxScore,
-      total_sessions: totalSessions,
-    }]])
-    .mockResolvedValueOnce([[{ done: facileDone }]])    // 7. facileDoneRes
-    .mockResolvedValueOnce([[{ total: facileTotal }]])  // 8. facileTotalRes
-    .mockResolvedValueOnce([[{ nb: moyenNb }]])         // 9. moyenRes
-    .mockResolvedValueOnce([[]])                        // 10. progression
+    .mockResolvedValueOnce([[{ done: facileDone }]])    // 6. facileDoneRes
+    .mockResolvedValueOnce([[{ total: facileTotal }]])  // 7. facileTotalRes
+    .mockResolvedValueOnce([[{ nb: moyenNb }]])         // 8. moyenRes
+    .mockResolvedValueOnce([[]])                        // 9. progression
     ;
 };
 
@@ -177,6 +173,29 @@ describe('getStats — calcul du streak', () => {
     await getStats(makeReq(), res);
 
     expect(res.json.mock.calls[0][0].streak).toBe(1);
+  });
+
+  it("3 jours consécutifs jusqu'à hier, rien fait aujourd'hui → streak conservé à 3 (délai de grâce)", async () => {
+    // Régression : l'utilisateur n'a pas encore fait son exercice du jour,
+    // mais sa série des 3 derniers jours (hier, avant-hier, avant-avant-hier)
+    // ne doit pas retomber à 0 pour autant.
+    setupGetStats({
+      streak_jours: [dayOffset(1), dayOffset(2), dayOffset(3)],
+    });
+    const res = makeRes();
+    await getStats(makeReq(), res);
+
+    expect(res.json.mock.calls[0][0].streak).toBe(3);
+  });
+
+  it("dernier exercice il y a 2 jours (pas hier) → streak 0, pas de délai de grâce au-delà d'un jour", async () => {
+    setupGetStats({
+      streak_jours: [dayOffset(2), dayOffset(3)],
+    });
+    const res = makeRes();
+    await getStats(makeReq(), res);
+
+    expect(res.json.mock.calls[0][0].streak).toBe(0);
   });
 });
 

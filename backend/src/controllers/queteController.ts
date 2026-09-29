@@ -81,6 +81,15 @@ export const updateRevision = async (
   ) as any[];
 
   const existing = (rows as RevisionRow[])[0];
+
+  // Déjà révisé aujourd'hui (l'app ne prévoit qu'une tentative par jour, mais
+  // rien n'empêche techniquement de rejouer un exercice déjà fait via le
+  // Parcours) : on ne fait pas avancer une seconde fois la carte FSRS le même
+  // jour, ce qui fausserait le calcul (conçu pour un vrai écart de jours).
+  if (existing?.derniere_revision && new Date(existing.derniere_revision).toISOString().slice(0, 10) === today()) {
+    return;
+  }
+
   const carteActuelle: Card = existing ? versCard(existing) : createEmptyCard();
   const rating = scoreVersRating(score);
   const maintenant = new Date();
@@ -89,28 +98,42 @@ export const updateRevision = async (
 
   const prochaine = carteMaj.due.toISOString().slice(0, 10);
   const intervalle = Math.max(1, Math.round(carteMaj.scheduled_days));
+  const valeursCarte = [
+    prochaine, intervalle, carteMaj.reps,
+    carteMaj.stability, carteMaj.difficulty, carteMaj.state, carteMaj.lapses, maintenant,
+  ];
 
   if (existing) {
     await pool.execute(
       `UPDATE Revisions SET prochaine_revision = ?, intervalle_jours = ?, nb_revisions = ?,
          stabilite = ?, difficulte = ?, etat = ?, nb_echecs = ?, derniere_revision = ?
        WHERE id_utilisateur = ? AND id_exercice = ?`,
-      [
-        prochaine, intervalle, carteMaj.reps,
-        carteMaj.stability, carteMaj.difficulty, carteMaj.state, carteMaj.lapses, maintenant,
-        idUtilisateur, idExercice,
-      ],
+      [...valeursCarte, idUtilisateur, idExercice],
     );
   } else {
-    await pool.execute(
-      `INSERT INTO Revisions
-         (id_utilisateur, id_exercice, prochaine_revision, intervalle_jours, nb_revisions, stabilite, difficulte, etat, nb_echecs, derniere_revision)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        idUtilisateur, idExercice, prochaine, intervalle, carteMaj.reps,
-        carteMaj.stability, carteMaj.difficulty, carteMaj.state, carteMaj.lapses, maintenant,
-      ],
-    );
+    try {
+      await pool.execute(
+        `INSERT INTO Revisions
+           (id_utilisateur, id_exercice, prochaine_revision, intervalle_jours, nb_revisions, stabilite, difficulte, etat, nb_echecs, derniere_revision)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [idUtilisateur, idExercice, ...valeursCarte],
+      );
+    } catch (err: any) {
+      // Une requête concurrente a créé la ligne entre le SELECT et l'INSERT
+      // (double clic, retry réseau) : la contrainte UNIQUE(id_utilisateur,
+      // id_exercice) la rejette ; on bascule sur une mise à jour pour éviter
+      // un doublon dans Revisions plutôt que de laisser planter la requête.
+      if (err?.code === 'ER_DUP_ENTRY') {
+        await pool.execute(
+          `UPDATE Revisions SET prochaine_revision = ?, intervalle_jours = ?, nb_revisions = ?,
+             stabilite = ?, difficulte = ?, etat = ?, nb_echecs = ?, derniere_revision = ?
+           WHERE id_utilisateur = ? AND id_exercice = ?`,
+          [...valeursCarte, idUtilisateur, idExercice],
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 };
 

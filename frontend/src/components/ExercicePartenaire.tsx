@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { getUserId } from "../hooks/useAuth";
 import { X, Volume2, ChevronRight } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut, type NiveauBruit } from "../utils/bruitFond";
+import { NIVEAU_LABEL } from "../utils/niveau";
+import { enregistrerResultat } from "../utils/resultats";
 
 interface Props {
 	exercice: {
@@ -17,12 +18,6 @@ interface Props {
 }
 
 type Ecran = "instructions" | "question" | "feedback" | "termine";
-
-const NIVEAU_LABEL: Record<string, string> = {
-	facile: "Facile",
-	moyen: "Moyen",
-	difficile: "Difficile",
-};
 
 /* ── Génère les questions depuis le contenu JSON ── */
 type Question = {
@@ -378,6 +373,84 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
+	// --- Texte + questions à plat (compréhension de texte, pas enveloppé dans "histoires") ---
+	if (contenu?.texte && contenu?.questions) {
+		questions.push({
+			affichage: contenu.texte,
+			tts: contenu.texte,
+			choix: ["J'ai bien écouté, passer aux questions"],
+			reponse: "J'ai bien écouté, passer aux questions",
+			contexte: contenu.titre ? `Texte : ${contenu.titre}` : "Écoutez le texte",
+		});
+		for (const q of contenu.questions as { q?: string; question?: string; reponse?: string }[]) {
+			const texteQuestion = q.q || q.question || "";
+			questions.push({
+				affichage: texteQuestion,
+				tts: texteQuestion,
+				choix: ["J'ai bien répondu", "Je n'ai pas trouvé"],
+				reponse: "J'ai bien répondu",
+				contexte: q.reponse ? `Réponse attendue : ${q.reponse}` : undefined,
+			});
+		}
+	}
+
+	// --- Expressions/formules courantes à répéter ---
+	if (contenu?.expressions) {
+		for (const expr of contenu.expressions as string[]) {
+			questions.push({
+				affichage: expr,
+				tts: expr,
+				choix: ["J'ai répété correctement", "Je n'ai pas réussi"],
+				reponse: "J'ai répété correctement",
+			});
+		}
+	}
+
+	// --- Texte suivi du doigt avec points d'arrêt (répéter le dernier mot) ---
+	if (contenu?.texte && contenu?.points_arret_suggeres) {
+		questions.push({
+			affichage: contenu.texte,
+			tts: contenu.texte,
+			choix: ["J'ai suivi le texte des yeux"],
+			reponse: "J'ai suivi le texte des yeux",
+			contexte: "Suivez le texte des yeux pendant que votre partenaire le lit à voix haute",
+		});
+		for (const mot of contenu.points_arret_suggeres as string[]) {
+			questions.push({
+				affichage: "......",
+				tts: mot,
+				choix: ["J'ai répété le bon mot", "Je n'ai pas suivi"],
+				reponse: "J'ai répété le bon mot",
+				contexte: "Répétez le dernier mot entendu",
+			});
+		}
+	}
+
+	// --- Catégories de phrases (identifier le type d'une phrase/question) ---
+	if (contenu?.categories && typeof contenu.categories === "object" && !Array.isArray(contenu.categories)) {
+		const LABEL_CATEGORIE: Record<string, string> = {
+			oui_non: "Question fermée (oui/non)",
+			affirmations: "Affirmation",
+			choix_limite: "Choix limité",
+			reponse_ouverte: "Question ouverte",
+			reponse_precise: "Question précise",
+		};
+		const cats = contenu.categories as Record<string, string[]>;
+		const noms = Object.keys(cats).map((k) => LABEL_CATEGORIE[k] || k);
+		for (const [cle, phrases] of Object.entries(cats)) {
+			const label = LABEL_CATEGORIE[cle] || cle;
+			for (const phrase of phrases) {
+				questions.push({
+					affichage: phrase,
+					tts: phrase,
+					choix: noms,
+					reponse: label,
+					contexte: "Quel est le type de cette phrase ?",
+				});
+			}
+		}
+	}
+
 	// --- Thèmes ---
 	if (contenu?.themes) {
 		for (const theme of contenu.themes) {
@@ -580,12 +653,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			bruitCtrlRef.current?.stop();
 			bruitCtrlRef.current = null;
 			const pct = Math.round(score / total * 100);
-			const token = localStorage.getItem("token");
-			await fetch(`${API_URL}/api/resultats`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-				body: JSON.stringify({ id_utilisateur: getUserId(), id_exercice: exercice.id, score: pct }),
-			});
+			await enregistrerResultat(exercice.id, pct);
 			setEcran("termine");
 		} else {
 			setIndex(i => i + 1);

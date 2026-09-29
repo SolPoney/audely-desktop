@@ -11,6 +11,7 @@ export const getExercicesCompletes = async (req: Request, res: Response) => {
     ) as any[];
     res.json((rows as any[]).map((r: any) => r.id_exercice));
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
@@ -68,9 +69,9 @@ export const getStats = async (req: Request, res: Response) => {
     // 3. Global
     const [global] = await pool.execute(`
       SELECT
-        COUNT(*)            AS total_sessions,
-        ROUND(AVG(score))   AS score_global,
-        MAX(score)          AS meilleur_score
+        COUNT(*)                     AS total_sessions,
+        ROUND(AVG(score))            AS score_global,
+        COALESCE(MAX(score), 0)      AS meilleur_score
       FROM Resultats
       WHERE id_utilisateur = ?
     `, [userId]) as any[];
@@ -83,16 +84,28 @@ export const getStats = async (req: Request, res: Response) => {
       ORDER BY jour DESC
     `, [userId]) as any[];
 
+    // Le jour le plus récent avec un exercice doit être aujourd'hui OU hier
+    // (délai de grâce : ne pas casser une série de 30 jours juste parce que
+    // l'utilisateur n'a pas encore fait son exercice du jour au moment de l'appel).
     let streak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    for (let i = 0; i < (jours as any[]).length; i++) {
-      const jour = new Date((jours as any[])[i].jour);
-      jour.setHours(0, 0, 0, 0);
-      const expected = new Date(today);
-      expected.setDate(today.getDate() - i);
-      if (jour.getTime() === expected.getTime()) streak++;
-      else break;
+    const joursList = jours as any[];
+    if (joursList.length > 0) {
+      const plusRecent = new Date(joursList[0].jour);
+      plusRecent.setHours(0, 0, 0, 0);
+      const ecartJours = Math.round((today.getTime() - plusRecent.getTime()) / 86400000);
+      if (ecartJours <= 1) {
+        const expected = new Date(plusRecent);
+        for (let i = 0; i < joursList.length; i++) {
+          const jour = new Date(joursList[i].jour);
+          jour.setHours(0, 0, 0, 0);
+          if (jour.getTime() === expected.getTime()) {
+            streak++;
+            expected.setDate(expected.getDate() - 1);
+          } else break;
+        }
+      }
     }
 
     // 5. XP
@@ -106,10 +119,7 @@ export const getStats = async (req: Request, res: Response) => {
     const totalXP = Math.round((xpRes as any[])[0].total_xp);
     const niveauInfo = getNiveau(totalXP);
 
-    // 6. Données pour les badges
-    const [maxScoreRes] = await pool.execute(
-      'SELECT COALESCE(MAX(score), 0) as max_score, COUNT(*) as total_sessions FROM Resultats WHERE id_utilisateur = ?', [userId]
-    ) as any[];
+    // 6. Données pour les badges (réutilise "global" — même comptage/max déjà calculé au point 3)
     const [facileDoneRes] = await pool.execute(`
       SELECT COUNT(DISTINCT r.id_exercice) as done
       FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
@@ -124,8 +134,8 @@ export const getStats = async (req: Request, res: Response) => {
       WHERE r.id_utilisateur = ? AND e.niveau = 'moyen'
     `, [userId]) as any[];
 
-    const maxScore = (maxScoreRes as any[])[0].max_score;
-    const totalSessions = (maxScoreRes as any[])[0].total_sessions;
+    const maxScore = (global as any[])[0].meilleur_score;
+    const totalSessions = (global as any[])[0].total_sessions;
     const facileDone = (facileDoneRes as any[])[0].done;
     const facileTotal = (facileTotalRes as any[])[0].total;
     const moyenNb = (moyenRes as any[])[0].nb;
