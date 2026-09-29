@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom/vitest';
 
 // Mock window.matchMedia (non disponible dans jsdom)
 Object.defineProperty(window, 'matchMedia', {
