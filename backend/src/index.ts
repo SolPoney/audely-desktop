@@ -15,8 +15,16 @@ import { verifyToken } from './middlewares/authMiddleware.js';
 
 const app = express();
 
-// Security headers (OWASP best practices)
-app.use(helmet());
+// Security headers (OWASP best practices). Le frontend est hébergé sur un
+// domaine différent (Vercel) et charge l'audio TTS directement depuis cette
+// API (<audio src="...">) : la valeur par défaut de Helmet pour
+// Cross-Origin-Resource-Policy ("same-origin") bloquait silencieusement ce
+// chargement côté navigateur. L'accès cross-origin est déjà restreint par
+// CORS (CORS_ORIGIN) ; on autorise donc explicitement le chargement de
+// ressources cross-origin.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // CORS
 app.use(cors({
