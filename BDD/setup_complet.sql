@@ -201,6 +201,12 @@ INSERT INTO `Exercices` (`id`, `titre`, `niveau`, `description`, `audio_url`, `c
 (130,'Grave ou aigu ? (sons rapprochés)','moyen','Écoutez le son et déterminez s\'il est grave ou aigu — les fréquences sont plus rapprochées qu\'en niveau facile.','',3,'grave_aigu',NULL),
 (131,'Grave ou aigu ? (discrimination fine)','difficile','Écoutez le son et déterminez s\'il est grave ou aigu — les fréquences sont très proches, la discrimination est plus exigeante.','',3,'grave_aigu',NULL);
 
+-- ── Corrige les instructions de "Grave ou aigu" (id 1, 18) : le texte disait
+--    "votre partenaire prononce..." alors que c'est l'app qui lit le mot avec
+--    une voix simulée. consigne_partenaire retiré (jamais affiché côté UI).
+UPDATE `Exercices` SET `contenu` = '{"mots": ["chat", "maison", "soleil", "porte", "jardin", "fleur", "voiture", "nuit", "table", "musique"], "instructions": "L\'application énonce un mot avec une voix simulée, grave ou aiguë. Dites ce que vous entendez."}' WHERE `id` = 1;
+UPDATE `Exercices` SET `contenu` = '{"paires": [{"mot_aigu": "oiseau", "mot_grave": "voiture"}, {"mot_aigu": "flûte", "mot_grave": "montagne"}, {"mot_aigu": "cloche", "mot_grave": "tambour"}, {"mot_aigu": "cigale", "mot_grave": "forêt"}, {"mot_aigu": "sifflet", "mot_grave": "tonnerre"}, {"mot_aigu": "grillon", "mot_grave": "camion"}, {"mot_aigu": "pipeau", "mot_grave": "orage"}, {"mot_aigu": "souris", "mot_grave": "baleine"}, {"mot_aigu": "triangle", "mot_grave": "gong"}, {"mot_aigu": "moustique", "mot_grave": "ours"}], "instructions": "L\'application énonce un mot avec une voix simulée grave ou aiguë. Dites ce que vous entendez."}' WHERE `id` = 18;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ================================================================
