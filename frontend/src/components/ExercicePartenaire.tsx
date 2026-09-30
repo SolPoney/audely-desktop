@@ -65,6 +65,21 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
+	// --- Quelle fin de phrase (début fixe + fins de longueurs différentes) ---
+	else if (contenu?.phrases && contenu.phrases[0]?.debut && contenu.phrases[0]?.fins) {
+		for (const item of contenu.phrases) {
+			const fins: string[] = item.fins;
+			const reponse = fins[Math.floor(Math.random() * fins.length)];
+			questions.push({
+				affichage: item.debut,
+				tts: `${item.debut} ${reponse}`,
+				choix: [...fins].sort(() => Math.random() - 0.5),
+				reponse,
+				contexte: "Quelle fin de phrase avez-vous entendue ?",
+			});
+		}
+	}
+
 	// --- Compléter une phrase / Le bon contexte ---
 	else if (contenu?.phrases) {
 		for (const item of contenu.phrases) {
@@ -484,20 +499,38 @@ function genererQuestions(contenu: any): Question[] {
 
 	// --- Compter les syllabes (mots réels avec nb de syllabes) ---
 	if (contenu?.syllabes && contenu.syllabes[0]?.mot) {
+		// Choix dynamiques : certaines banques vont jusqu'à 5 syllabes ou plus
+		const maxNb = Math.max(...contenu.syllabes.map((s: any) => s.nb));
+		const choix = Array.from({ length: maxNb }, (_, i) => `${i + 1} syllabe${i + 1 > 1 ? "s" : ""}`);
 		for (const item of contenu.syllabes) {
 			questions.push({
 				affichage: "......",
 				tts: item.mot,
-				choix: ["1 syllabe", "2 syllabes", "3 syllabes"],
+				choix,
 				reponse: `${item.nb} syllabe${item.nb > 1 ? "s" : ""}`,
 				contexte: "Combien de syllabes avez-vous entendu ?",
 			});
 		}
 	}
 
+	// --- Repérer un son cible dans une liste de mots ---
+	if (contenu?.mots && typeof contenu.mots[0] === "string" && contenu?.son_cible) {
+		const cible = String(contenu.son_cible).toLowerCase();
+		for (const mot of contenu.mots as string[]) {
+			const contient = mot.toLowerCase().includes(cible);
+			questions.push({
+				affichage: "......",
+				tts: mot,
+				choix: ["Oui", "Non"],
+				reponse: contient ? "Oui" : "Non",
+				contexte: `Ce mot contient-il le son « ${contenu.son_cible.toUpperCase()} » ?`,
+			});
+		}
+	}
+
 	// --- Grave ou aigu sur des mots/syllabes isolés (liste plate) ---
 	if (
-		(contenu?.mots && typeof contenu.mots[0] === "string") ||
+		(contenu?.mots && typeof contenu.mots[0] === "string" && !contenu?.son_cible) ||
 		(contenu?.syllabes && typeof contenu.syllabes[0] === "string")
 	) {
 		const items: string[] = contenu.mots || contenu.syllabes;
@@ -514,21 +547,21 @@ function genererQuestions(contenu: any): Question[] {
 		}
 	}
 
-	// --- Séries de syllabes ---
+	// --- Séries de sons répétés (ex. "1 ou 2 sons ?") ---
 	if (contenu?.series) {
 		const allNbs = contenu.series.map((s: any) => s.sons ?? s).filter((n: any) => typeof n === "number");
 		const maxNb = Math.max(...allNbs);
-		const choix = Array.from({ length: maxNb }, (_, i) => `${i + 1} syllabe${i + 1 > 1 ? "s" : ""}`);
+		const choix = Array.from({ length: maxNb }, (_, i) => `${i + 1} son${i + 1 > 1 ? "s" : ""}`);
 		for (const s of contenu.series) {
 			const nb: number = s.sons ?? s;
-			// "ba. ba. ba." — pauses entre chaque syllabe
+			// "ba. ba. ba." — pauses entre chaque son
 			const tts = Array(nb).fill("ba").join(". ");
 			questions.push({
 				affichage: "......",
 				tts,
 				choix,
-				reponse: `${nb} syllabe${nb > 1 ? "s" : ""}`,
-				contexte: "Combien de syllabes avez-vous entendu ?",
+				reponse: `${nb} son${nb > 1 ? "s" : ""}`,
+				contexte: "Combien de sons avez-vous entendu ?",
 			});
 		}
 	}
@@ -586,10 +619,11 @@ const lire = (texte: string, onEnd?: () => void, pitch?: number, volume = 1.0) =
 		window.speechSynthesis.cancel();
 		const utt = new SpeechSynthesisUtterance(texte);
 		utt.lang = "fr-FR";
-		utt.pitch = pitch;
-		// Le ralentissement renforce la perception "grave" même quand le moteur
-		// vocal du navigateur ne baisse le pitch que légèrement.
-		utt.rate = pitch < 1 ? 0.72 : 1.05;
+		// Les valeurs extrêmes (0.15/1.9) donnaient une voix de "monstre"/"chipmunk"
+		// désagréable ; on reste dans une plage plus modérée qui garde un contraste
+		// grave/aigu perceptible sans sonner comme une distorsion artificielle.
+		utt.pitch = pitch < 1 ? 0.55 : 1.5;
+		utt.rate = pitch < 1 ? 0.88 : 1.1;
 		if (onEnd) utt.addEventListener("end", onEnd, { once: true });
 		window.speechSynthesis.speak(utt);
 		return;

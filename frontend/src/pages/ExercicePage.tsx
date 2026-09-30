@@ -82,7 +82,9 @@ const ExercicePage = () => {
 		if (
 			(contenuParsed?.phrases && typeof contenuParsed.phrases[0] === "string") ||
 			(contenuParsed?.mots && contenuParsed.mots[0]?.type) ||
-			contenuParsed?.syllabes
+			(contenuParsed?.mots && contenuParsed?.son_cible) ||
+			contenuParsed?.syllabes ||
+			contenuParsed?.series
 		) {
 			return <ExercicePartenaire exercice={exercice} />;
 		}
@@ -112,8 +114,13 @@ const ExercicePage = () => {
 	}
 
 	if (exercice.type_exercice === "court_moyen_long") {
-		// "Quelle phrase a été dite" / "Écart de syllabes croissant" → ExercicePartenaire
-		if (contenuParsed?.groupes || contenuParsed?.niveaux) {
+		// "Quelle phrase a été dite" / "Écart de syllabes croissant" / paires de mots / fins de phrase → ExercicePartenaire
+		if (
+			contenuParsed?.groupes ||
+			contenuParsed?.niveaux ||
+			contenuParsed?.paires ||
+			(contenuParsed?.phrases && contenuParsed.phrases[0]?.debut)
+		) {
 			return <ExercicePartenaire exercice={exercice} />;
 		}
 		return <CourtMoyenLongExercice exercice={exercice} />;
