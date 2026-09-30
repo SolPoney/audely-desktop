@@ -483,7 +483,7 @@ function genererQuestions(contenu: any): Question[] {
 	}
 
 	// --- Compter les syllabes (mots réels avec nb de syllabes) ---
-	if (contenu?.syllabes) {
+	if (contenu?.syllabes && contenu.syllabes[0]?.mot) {
 		for (const item of contenu.syllabes) {
 			questions.push({
 				affichage: "......",
@@ -491,6 +491,25 @@ function genererQuestions(contenu: any): Question[] {
 				choix: ["1 syllabe", "2 syllabes", "3 syllabes"],
 				reponse: `${item.nb} syllabe${item.nb > 1 ? "s" : ""}`,
 				contexte: "Combien de syllabes avez-vous entendu ?",
+			});
+		}
+	}
+
+	// --- Grave ou aigu sur des mots/syllabes isolés (liste plate) ---
+	if (
+		(contenu?.mots && typeof contenu.mots[0] === "string") ||
+		(contenu?.syllabes && typeof contenu.syllabes[0] === "string")
+	) {
+		const items: string[] = contenu.mots || contenu.syllabes;
+		for (const mot of items) {
+			const estGrave = Math.random() > 0.5;
+			questions.push({
+				affichage: "......",
+				tts: mot,
+				choix: ["Grave", "Aigu"],
+				reponse: estGrave ? "Grave" : "Aigu",
+				contexte: "Ce son est-il grave ou aigu ?",
+				pitch: estGrave ? 0.4 : 1.9,
 			});
 		}
 	}

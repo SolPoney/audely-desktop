@@ -103,6 +103,11 @@ const ExercicePage = () => {
 	}
 
 	if (exercice.type_exercice === "grave_aigu") {
+		// → ExercicePartenaire si un vrai contenu verbal existe (mots/syllabes à dire grave ou aigu)
+		if (contenuParsed?.mots || contenuParsed?.syllabes) {
+			return <ExercicePartenaire exercice={exercice} />;
+		}
+		// Sinon : discrimination non-verbale pure (tons générés, sans contenu JSON)
 		return <GraveAiguExercice exercice={exercice} />;
 	}
 

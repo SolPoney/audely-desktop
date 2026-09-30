@@ -195,6 +195,12 @@ INSERT INTO `Exercices` (`id`, `titre`, `niveau`, `description`, `audio_url`, `c
 (128,'Thème : La ville','moyen','Répétez des phrases un peu plus longues sur le thème de la ville.','',8,'themes','{"themes": [{"theme": "La ville", "phrases": ["Le marché du centre-ville a lieu tous les samedis matin.", "Il y a beaucoup de monde dans les rues piétonnes cet après-midi.", "Le bus s\'arrête juste devant la mairie.", "Les commerces ferment plus tôt le dimanche.", "On peut se garer facilement près de la bibliothèque municipale."]}], "instructions": "Votre partenaire annonce le thème, puis lit chaque phrase. Répétez-la.", "consigne_partenaire": "Annoncez le thème. Lisez chaque phrase à vitesse normale. Attendez que l\'auditeur répète avant de continuer."}'),
 (129,'Thème : Le bureau','moyen','Répétez des phrases un peu plus longues sur le thème du bureau.','',8,'themes','{"themes": [{"theme": "Le bureau", "phrases": ["La réunion commence à neuf heures précises ce matin.", "Elle envoie un mail à son collègue avant midi.", "L\'imprimante est encore en panne au deuxième étage.", "Il prend une pause-café avec ses collègues vers dix heures.", "Le rapport doit être terminé avant la fin de la semaine."]}], "instructions": "Votre partenaire annonce le thème, puis lit chaque phrase. Répétez-la.", "consigne_partenaire": "Annoncez le thème. Lisez chaque phrase à vitesse normale. Attendez que l\'auditeur répète avant de continuer."}');
 
+-- ── Grave/aigu : niveaux moyen et difficile manquants pour le jeu de tons purs ──
+
+INSERT INTO `Exercices` (`id`, `titre`, `niveau`, `description`, `audio_url`, `categorie_id`, `type_exercice`, `contenu`) VALUES
+(130,'Grave ou aigu ? (sons rapprochés)','moyen','Écoutez le son et déterminez s\'il est grave ou aigu — les fréquences sont plus rapprochées qu\'en niveau facile.','',3,'grave_aigu',NULL),
+(131,'Grave ou aigu ? (discrimination fine)','difficile','Écoutez le son et déterminez s\'il est grave ou aigu — les fréquences sont très proches, la discrimination est plus exigeante.','',3,'grave_aigu',NULL);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ================================================================
