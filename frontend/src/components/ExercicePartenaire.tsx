@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
-import { X, Volume2, ChevronRight } from "lucide-react";
+import { X, Volume2, ChevronRight, Check } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut, type NiveauBruit } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
 import { enregistrerResultat } from "../utils/resultats";
@@ -98,7 +98,7 @@ function genererQuestions(contenu: any): Question[] {
 	if (contenu?.paires && contenu.paires[0]?.mot1) {
 		for (const item of contenu.paires) {
 			questions.push({
-				affichage: `${item.mot1}  —  ${item.mot2}`,
+				affichage: "......  —  ......",
 				tts: `${item.mot1}. ${item.mot2}`,
 				choix: ["Pareil", "Différent"],
 				reponse: item.resultat === "pareil" ? "Pareil" : "Différent",
@@ -340,7 +340,7 @@ function genererQuestions(contenu: any): Question[] {
 	if (contenu?.sequences) {
 		for (const seq of contenu.sequences) {
 			questions.push({
-				affichage: seq.elements.join(" → "),
+				affichage: "......",
 				tts: seq.elements.join(", "),
 				choix: ["J'ai mémorisé dans le bon ordre", "J'ai fait une erreur"],
 				reponse: "J'ai mémorisé dans le bon ordre",
@@ -814,11 +814,13 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			{/* Grille de choix */}
 			{aEcoute ? (
 				<div className="ep-choix-grid">
-					{question.choix.map((choix) => {
+					{question.choix.map((choix, i) => {
 						let cls = "ep-choix-btn";
+						const estCorrecte = choix === question.reponse;
+						const estChoisie = choix === choixUser;
 						if (ecran === "feedback") {
-							if (choix === question.reponse) cls += " ep-choix-btn--correct";
-							else if (choix === choixUser) cls += " ep-choix-btn--incorrect";
+							if (estCorrecte) cls += " ep-choix-btn--correct";
+							else if (estChoisie) cls += " ep-choix-btn--incorrect";
 							else cls += " ep-choix-btn--disabled";
 						}
 						return (
@@ -829,7 +831,14 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 								onClick={() => valider(choix)}
 								disabled={ecran === "feedback"}
 							>
-								{choix}
+								<span className="ep-choix-badge" aria-hidden="true">
+									{ecran === "feedback" && estCorrecte
+										? <Check size={16} strokeWidth={3} />
+										: ecran === "feedback" && estChoisie
+										? <X size={16} strokeWidth={3} />
+										: String.fromCharCode(65 + i)}
+								</span>
+								<span className="ep-choix-texte">{choix}</span>
 							</button>
 						);
 					})}
