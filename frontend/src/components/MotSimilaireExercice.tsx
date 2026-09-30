@@ -5,6 +5,7 @@ import { API_URL } from "../config/api";
 import { lireTexte, arreterLectureAudio } from "../utils/tts";
 import { enregistrerResultat } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
+import { NIVEAU_LABEL } from "../utils/niveau";
 
 interface Props {
 	exercice: {
@@ -130,6 +131,10 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 				<span className="ep-progress-label">{index + 1} / {total}</span>
 			</div>
 
+			<div style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", marginTop: "0.5rem" }}>
+				<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+			</div>
+			<p style={{ textAlign: "center", fontWeight: 700, marginTop: "0.25rem" }}>{exercice.titre}</p>
 			<p className="rythme-instruction">Quel mot avez-vous entendu en dernier ?</p>
 
 			{/* Zone lecture */}

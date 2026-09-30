@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
 import { enregistrerResultat } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
+import { NIVEAU_LABEL } from "../utils/niveau";
 
 interface Props {
 	exercice: {
@@ -148,7 +149,10 @@ const GraveAiguExercice = ({ exercice }: Props) => {
 				<span className="ep-progress-label">{index + 1} / {TOTAL}</span>
 			</div>
 
-			<p className="rythme-instruction">GRAVE OU AIGU ?</p>
+			<div style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", marginTop: "0.5rem" }}>
+				<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+			</div>
+			<p className="rythme-instruction">{exercice.titre.toUpperCase()}</p>
 
 			<div className="rythme-play-area">
 				<button

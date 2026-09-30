@@ -5,6 +5,7 @@ import { X, Volume2, ChevronRight, Check } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut, type NiveauBruit } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
 import { enregistrerResultat } from "../utils/resultats";
+import ResultScreen from "./ResultScreen";
 
 interface Props {
 	exercice: {
@@ -727,38 +728,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 	/* ── Terminé ── */
 	if (ecran === "termine") {
 		const final = Math.round(score / total * 100);
-		const msg = final >= 80 ? "Excellent travail !" : final >= 50 ? "Bien joué !" : "Continuez à vous entraîner !";
-		return (
-			<div className="ep-result">
-				<h1 className="ep-result-score">
-					{score} / {total} bonne{score > 1 ? "s" : ""} réponse{score > 1 ? "s" : ""}
-				</h1>
-				<div className="ep-result-ring" aria-hidden="true">
-					<svg viewBox="0 0 120 120" width="160" height="160">
-						<circle cx="60" cy="60" r="50" fill="none" stroke="#E2E8F0" strokeWidth="10" />
-						<circle
-							cx="60" cy="60" r="50"
-							fill="none" stroke="#0D9488" strokeWidth="10"
-							strokeLinecap="round"
-							strokeDasharray={2 * Math.PI * 50}
-							strokeDashoffset={2 * Math.PI * 50 * (1 - final / 100)}
-							transform="rotate(-90 60 60)"
-						/>
-						<text x="60" y="60" textAnchor="middle" dominantBaseline="central"
-							fontSize="22" fontWeight="800" fill="#0F172A">{final}%</text>
-					</svg>
-				</div>
-				<p className="ep-result-message">{msg}</p>
-				<div className="ep-result-actions">
-					<button className="det-btn-outline" onClick={() => navigate(-1)}>
-						Retour aux exercices
-					</button>
-					<button className="ep-btn-primary" onClick={() => navigate("/dashboard")}>
-						Continuer
-					</button>
-				</div>
-			</div>
-		);
+		return <ResultScreen score={final} bonnes={score} total={total} />;
 	}
 
 	if (!question) return null;

@@ -5,6 +5,7 @@ import { X, ChevronRight } from "lucide-react";
 import { lireTexte, arreterLectureAudio } from "../utils/tts";
 import { enregistrerResultat } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
+import { NIVEAU_LABEL } from "../utils/niveau";
 
 interface MotItem {
 	mot: string;
@@ -110,6 +111,10 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 				<span className="ep-progress-label">{index + 1} / {total}</span>
 			</div>
 
+			<div style={{ display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "center", marginTop: "0.5rem" }}>
+				<span className={`badge badge--${exercice.niveau}`}>{NIVEAU_LABEL[exercice.niveau]}</span>
+			</div>
+			<p style={{ textAlign: "center", fontWeight: 700, marginTop: "0.25rem" }}>{exercice.titre}</p>
 			<p className="dorth-instruction">Quel mot avez-vous entendu ?</p>
 
 			<div className="dorth-card-area">
