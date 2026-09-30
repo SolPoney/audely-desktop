@@ -119,7 +119,7 @@ function genererQuestions(contenu: any): Question[] {
 				choix: ["Grave", "Aigu"],
 				reponse: estGrave ? "Grave" : "Aigu",
 				contexte: "Ce son est-il grave ou aigu ?",
-				pitch: estGrave ? 0.4 : 1.9,
+				pitch: estGrave ? 0.15 : 1.9,
 			});
 		}
 	}
@@ -509,7 +509,7 @@ function genererQuestions(contenu: any): Question[] {
 				choix: ["Grave", "Aigu"],
 				reponse: estGrave ? "Grave" : "Aigu",
 				contexte: "Ce son est-il grave ou aigu ?",
-				pitch: estGrave ? 0.4 : 1.9,
+				pitch: estGrave ? 0.15 : 1.9,
 			});
 		}
 	}
@@ -587,7 +587,9 @@ const lire = (texte: string, onEnd?: () => void, pitch?: number, volume = 1.0) =
 		const utt = new SpeechSynthesisUtterance(texte);
 		utt.lang = "fr-FR";
 		utt.pitch = pitch;
-		utt.rate = pitch < 1 ? 0.82 : 1.05;
+		// Le ralentissement renforce la perception "grave" même quand le moteur
+		// vocal du navigateur ne baisse le pitch que légèrement.
+		utt.rate = pitch < 1 ? 0.72 : 1.05;
 		if (onEnd) utt.addEventListener("end", onEnd, { once: true });
 		window.speechSynthesis.speak(utt);
 		return;

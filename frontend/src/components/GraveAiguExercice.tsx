@@ -19,8 +19,11 @@ interface Question {
 	type: TypeSon;
 }
 
+// 110 Hz était trop grave pour être bien reproduit par les petits haut-parleurs
+// (téléphone, ordinateur portable) : remonté à 165 Hz, toujours nettement grave
+// face à 1760 Hz mais beaucoup plus audible dans de bonnes conditions.
 const FREQS: Record<string, { grave: number; aigu: number }> = {
-	facile:    { grave: 110,  aigu: 1760 },
+	facile:    { grave: 165,  aigu: 1760 },
 	moyen:     { grave: 196,  aigu: 880  },
 	difficile: { grave: 330,  aigu: 660  },
 };
@@ -39,21 +42,38 @@ const genererQuestions = (): Question[] => {
 
 const jouerTon = (freq: number, onEnd: () => void): () => void => {
 	const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-	const osc  = ctx.createOscillator();
-	const gain = ctx.createGain();
-	osc.connect(gain);
-	gain.connect(ctx.destination);
-	osc.type = "sine";
-	osc.frequency.value = freq;
 	const t = ctx.currentTime;
-	gain.gain.setValueAtTime(0, t);
-	gain.gain.linearRampToValueAtTime(0.35, t + 0.06);
-	gain.gain.setValueAtTime(0.35, t + 0.85);
-	gain.gain.linearRampToValueAtTime(0, t + 1.1);
-	osc.start(t);
-	osc.stop(t + 1.1);
-	osc.onended = () => { ctx.close(); onEnd(); };
-	return () => { osc.stop(); ctx.close(); };
+	const oscillateurs: OscillatorNode[] = [];
+
+	const creerVoix = (frequence: number, volumeMax: number) => {
+		const osc  = ctx.createOscillator();
+		const gain = ctx.createGain();
+		osc.connect(gain);
+		gain.connect(ctx.destination);
+		osc.type = "sine";
+		osc.frequency.value = frequence;
+		gain.gain.setValueAtTime(0, t);
+		gain.gain.linearRampToValueAtTime(volumeMax, t + 0.06);
+		gain.gain.setValueAtTime(volumeMax, t + 0.85);
+		gain.gain.linearRampToValueAtTime(0, t + 1.1);
+		osc.start(t);
+		osc.stop(t + 1.1);
+		oscillateurs.push(osc);
+		return osc;
+	};
+
+	// Les sons graves sont perçus plus faiblement à volume égal (courbes
+	// isosoniques) et mal reproduits par les petits haut-parleurs : on
+	// compense en augmentant le volume, et on ajoute une harmonique (2x la
+	// fréquence) pour les sons vraiment graves — l'oreille perçoit toujours
+	// la hauteur d'origine, mais l'énergie sonore tombe dans une plage que
+	// les petits haut-parleurs reproduisent mieux.
+	const volume = freq < 200 ? 0.6 : freq < 400 ? 0.45 : 0.35;
+	const principal = creerVoix(freq, volume);
+	if (freq < 200) creerVoix(freq * 2, volume * 0.4);
+
+	principal.onended = () => { ctx.close(); onEnd(); };
+	return () => { oscillateurs.forEach((osc) => osc.stop()); ctx.close(); };
 };
 
 const TOTAL = 10;
