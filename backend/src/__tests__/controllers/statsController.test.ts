@@ -179,6 +179,17 @@ describe('getStats — XP du jour et objectif quotidien', () => {
     expect(res.json.mock.calls[0][0].xpAujourdhui).toBe(0);
     expect(res.json.mock.calls[0][0].objectifQuotidien).toBe(30);
   });
+
+  it("renvoie xpAujourdhui en nombre même si le driver MySQL renvoie une chaîne (SUM() sur BIGINT)", async () => {
+    // mysql2 renvoie parfois SUM(...) sous forme de chaîne ("45" plutôt que 45) —
+    // régression possible si le contrôleur oublie de convertir.
+    setupGetStats({ xpAujourdhui: '45' as unknown as number });
+    const res = makeRes();
+    await getStats(makeReq(), res);
+
+    expect(res.json.mock.calls[0][0].xpAujourdhui).toBe(45);
+    expect(typeof res.json.mock.calls[0][0].xpAujourdhui).toBe('number');
+  });
 });
 
 // ─────────────────────────────────────────────────────────

@@ -155,7 +155,7 @@ export const getStats = async (req: Request, res: Response) => {
     const streak = serieInfo?.serie_actuelle ?? 0;
     const gelsDisponibles = serieInfo?.gels_disponibles ?? 0;
 
-    const xpAujourdhui = (xpAujourdhuiRes as any[])[0]?.xp_jour ?? 0;
+    const xpAujourdhui = Number((xpAujourdhuiRes as any[])[0]?.xp_jour ?? 0);
     const objectifQuotidien = (utilisateurRows as any[])[0]?.objectif_quotidien_xp ?? 30;
 
     const totalXP = Math.round((xpRes as any[])[0].total_xp);
