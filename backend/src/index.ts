@@ -10,6 +10,7 @@ import resultatRoutes from "./routes/resultatRoutes.js"
 import ttsRoutes from './routes/ttsRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
 import queteRoutes from './routes/queteRoutes.js'
+import utilisateurRoutes from './routes/utilisateurRoutes.js'
 
 import { verifyToken } from './middlewares/authMiddleware.js';
 
@@ -57,6 +58,7 @@ app.use("/api", resultatRoutes)
 app.use('/api', ttsRoutes)
 app.use('/api', statsRoutes)
 app.use('/api', queteRoutes)
+app.use('/api', utilisateurRoutes)
 
 app.get('/api/ping', (_req, res) => res.json({ ok: true }));
 

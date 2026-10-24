@@ -2,6 +2,7 @@ import pool from '../config/db.js';
 import { Request, Response } from 'express';
 import { updateRevision } from './queteController.js';
 import { mettreAJourSerie } from '../services/serieService.js';
+import { enregistrerGainXP } from '../services/xpService.js';
 
 /**
  * Save an exercise result and update the spaced-repetition schedule (FSRS).
@@ -34,20 +35,28 @@ export const saveResultat = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Le score doit être compris entre 0 et 100.' });
     }
 
-    // Resultats + Serie sont écrits ensemble dans une transaction : la série
-    // ne doit jamais avancer sans que le résultat qui la justifie soit
-    // réellement enregistré (et vice versa).
+    // Resultats + Serie + GainXP sont écrits ensemble dans une transaction :
+    // aucun des trois ne doit avancer sans que les autres soient cohérents.
     const connection = await pool.getConnection();
     let resultatSerie;
+    let resultatXP;
     try {
       await connection.beginTransaction();
 
-      await connection.execute(
+      const [exerciceRows] = await connection.execute(
+        'SELECT niveau FROM Exercices WHERE id = ?',
+        [exerciceId],
+      ) as any[];
+      const niveau = (exerciceRows as any[])[0]?.niveau ?? 'facile';
+
+      const [insertResult] = await connection.execute(
         'INSERT INTO Resultats (id_utilisateur, id_exercice, score) VALUES (?, ?, ?)',
         [userId, exerciceId, scoreNum]
-      );
+      ) as any[];
+      const idResultat = (insertResult as any).insertId;
 
       resultatSerie = await mettreAJourSerie(connection, userId);
+      resultatXP = await enregistrerGainXP(connection, userId, idResultat, scoreNum, niveau);
 
       await connection.commit();
     } catch (err) {
@@ -61,7 +70,7 @@ export const saveResultat = async (req: Request, res: Response) => {
     // comme avant : un échec ici ne doit pas annuler le résultat déjà enregistré.
     await updateRevision(userId, exerciceId, scoreNum);
 
-    res.status(201).json({ message: 'Résultat enregistré', serie: resultatSerie });
+    res.status(201).json({ message: 'Résultat enregistré', serie: resultatSerie, xp: resultatXP });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

@@ -34,7 +34,6 @@ const LoginPage = () => {
 	const [voirMdpIn, setVoirMdpIn] = useState(false);
 	const [erreurIn, setErreurIn] = useState("");
 	const [chargeIn, setChargeIn] = useState(false);
-	const [succes, setSucces] = useState("");
 
 	/* — Refs pour focus-management */
 	const emailRef    = useRef<HTMLInputElement>(null);
@@ -66,7 +65,7 @@ const LoginPage = () => {
 			const data = await res.json();
 			if (res.ok) {
 				localStorage.setItem("token", data.token);
-				navigate("/dashboard");
+				navigate(data.onboardingFait ? "/dashboard" : "/onboarding");
 			} else {
 				setErreurCo(data.message || "Identifiants incorrects.");
 			}
@@ -105,9 +104,8 @@ const LoginPage = () => {
 			});
 			const data = await res.json();
 			if (res.ok) {
-				setSucces("Compte créé ! Connectez-vous.");
-				setOnglet("connexion");
-				setEmail(emailIn);
+				localStorage.setItem("token", data.token);
+				navigate(data.onboardingFait ? "/dashboard" : "/onboarding");
 			} else {
 				setErreurIn(data.message || "Erreur lors de l'inscription.");
 			}
@@ -158,7 +156,7 @@ const LoginPage = () => {
 						role="tab"
 						aria-selected={onglet === "connexion"}
 						className={`login-tab${onglet === "connexion" ? " login-tab--active" : ""}`}
-						onClick={() => { setOnglet("connexion"); setErreurIn(""); setSucces(""); }}
+						onClick={() => { setOnglet("connexion"); setErreurIn(""); }}
 					>
 						Connexion
 					</button>
@@ -166,7 +164,7 @@ const LoginPage = () => {
 						role="tab"
 						aria-selected={onglet === "inscription"}
 						className={`login-tab${onglet === "inscription" ? " login-tab--active" : ""}`}
-						onClick={() => { setOnglet("inscription"); setErreurCo(""); setSucces(""); }}
+						onClick={() => { setOnglet("inscription"); setErreurCo(""); }}
 					>
 						Inscription
 					</button>
@@ -176,7 +174,6 @@ const LoginPage = () => {
 				{/* ── Connexion ── */}
 				{onglet === "connexion" && (
 					<form onSubmit={handleConnexion} noValidate>
-						{succes && <div className="form-success" role="status">✓ {succes}</div>}
 						{erreurCo && (
 							<div role="alert" aria-live="assertive" className="form-error">
 								<span aria-hidden="true">⚠</span> {erreurCo}

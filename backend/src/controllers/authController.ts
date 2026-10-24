@@ -6,11 +6,21 @@ import { Request, Response } from 'express';
 /** Regex: basic email format validation */
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const signToken = (user: { id: number; mail: string; prenom: string }): string =>
+  jwt.sign(
+    { id: user.id, email: user.mail, prenom: user.prenom },
+    process.env.JWT_SECRET!,
+    { expiresIn: '30d' },
+  );
+
 /**
  * Register a new user.
  *
  * Validates that `nom`, `prenom`, `email` and `mot_de_passe` are present and
  * well-formed before hashing the password with Argon2 and persisting the user.
+ * Auto-logs the new account in (returns a token right away, same as /login)
+ * so the frontend can send the user straight to the onboarding screen
+ * without a second round-trip.
  *
  * @route POST /api/auth/register
  * @access Public
@@ -35,12 +45,14 @@ export const register = async (req: Request, res: Response) => {
 
     const hash = await argon2.hash(mot_de_passe);
 
-    await pool.execute(
+    const [result] = await pool.execute(
       'INSERT INTO Utilisateur (nom, prenom, mail, mot_de_passe) VALUES (?, ?, ?, ?)',
       [nom.trim(), prenom.trim(), email.toLowerCase(), hash]
-    );
+    ) as any[];
 
-    res.status(201).json({ message: 'Vous êtes enregistré' });
+    const token = signToken({ id: (result as any).insertId, mail: email.toLowerCase(), prenom: prenom.trim() });
+
+    res.status(201).json({ message: 'Vous êtes enregistré', token, onboardingFait: false });
   } catch (err: any) {
     // MySQL duplicate entry (email already used)
     if (err?.code === 'ER_DUP_ENTRY') {
@@ -92,13 +104,9 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.mail, prenom: user.prenom },
-      process.env.JWT_SECRET!,
-      { expiresIn: '30d' }
-    );
+    const token = signToken(user);
 
-    res.status(200).json({ token });
+    res.status(200).json({ token, onboardingFait: !!user.onboarding_fait });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

@@ -19,6 +19,8 @@ const DashboardPage = () => {
 	const [niveau, setNiveau]        = useState<Niveau | null>(null);
 	const [streak, setStreak]        = useState(0);
 	const [gelsDisponibles, setGelsDisponibles] = useState(0);
+	const [xpAujourdhui, setXpAujourdhui] = useState(0);
+	const [objectifQuotidien, setObjectifQuotidien] = useState(30);
 	const [queteNb, setQueteNb]      = useState(0);
 	const [queteTotal, setQueteTotal] = useState(3);
 	const [queteFaite, setQueteFaite] = useState(false);
@@ -33,6 +35,8 @@ const DashboardPage = () => {
 				setNiveau(data.niveau ?? null);
 				setStreak(data.streak ?? 0);
 				setGelsDisponibles(data.gelsDisponibles ?? 0);
+				setXpAujourdhui(data.xpAujourdhui ?? 0);
+				setObjectifQuotidien(data.objectifQuotidien ?? 30);
 			})
 
 		fetch(`${API_URL}/api/quete-du-jour`, { headers: { Authorization: `Bearer ${token}` } })
@@ -126,6 +130,26 @@ const DashboardPage = () => {
 										)}
 									</>
 								)}
+
+								<div className="db-hero-objectif">
+									<div className="db-hero-objectif-ligne">
+										<span>Objectif du jour</span>
+										<span>{Math.min(xpAujourdhui, objectifQuotidien)}&nbsp;/&nbsp;{objectifQuotidien}&nbsp;XP</span>
+									</div>
+									<div
+										className="db-hero-objectif-bar"
+										role="progressbar"
+										aria-valuenow={Math.min(100, Math.round((xpAujourdhui / objectifQuotidien) * 100))}
+										aria-valuemin={0}
+										aria-valuemax={100}
+										aria-label="Progression de l'objectif quotidien"
+									>
+										<div
+											className="db-hero-objectif-bar-fill"
+											style={{ width: `${Math.min(100, Math.round((xpAujourdhui / objectifQuotidien) * 100))}%` }}
+										/>
+									</div>
+								</div>
 							</div>
 						)}
 

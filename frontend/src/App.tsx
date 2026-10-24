@@ -11,6 +11,7 @@ import ParcoursListePage from "./pages/ParcoursListePage";
 import ExercicesCatPage from "./pages/ExercicesCatPage";
 import StatsPage from "./pages/StatsPage";
 import QueteDuJourPage from "./pages/QueteDuJourPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
         <Toaster position="bottom-right" richColors />
         <Routes>
           <Route path="/" element={<LoginPage />} />
+          <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
           <Route path="/exercices" element={<PrivateRoute><ExercicesPage /></PrivateRoute>} />
           <Route path="/exercice/:id" element={<PrivateRoute><ExercicePage /></PrivateRoute>} />

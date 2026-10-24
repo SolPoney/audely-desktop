@@ -35,12 +35,15 @@ DROP TABLE IF EXISTS Categorie;
 DROP TABLE IF EXISTS Utilisateur;
 
 CREATE TABLE Utilisateur (
-  id            INT AUTO_INCREMENT,
-  nom           VARCHAR(100) NOT NULL,
-  prenom        VARCHAR(100) NOT NULL,
-  mail          VARCHAR(255) NOT NULL UNIQUE,
-  mot_de_passe  VARCHAR(255) NOT NULL,
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  id                      INT AUTO_INCREMENT,
+  nom                     VARCHAR(100) NOT NULL,
+  prenom                  VARCHAR(100) NOT NULL,
+  mail                    VARCHAR(255) NOT NULL UNIQUE,
+  mot_de_passe            VARCHAR(255) NOT NULL,
+  created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  -- Choix fait à l'écran d'onboarding (voir OnboardingPage.tsx)
+  objectif_quotidien_xp   INT NOT NULL DEFAULT 30,
+  onboarding_fait         TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -111,6 +114,24 @@ CREATE TABLE Serie (
   PRIMARY KEY (id_utilisateur),
   CONSTRAINT FK_Serie_Utilisateur FOREIGN KEY (id_utilisateur)
     REFERENCES Utilisateur(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Journal des gains d'XP — voir backend/src/services/xpService.ts. Remplace
+-- le calcul à la volée (score × multiplicateur de niveau) : seul un journal
+-- permet l'XP du jour (objectif quotidien) et les futures ligues hebdomadaires.
+CREATE TABLE GainXP (
+  id             INT AUTO_INCREMENT,
+  id_utilisateur INT NOT NULL,
+  source         ENUM('exercice','bonus_score','revision','quete','bonus_serie','combo') NOT NULL,
+  montant        INT NOT NULL,
+  id_resultat    INT DEFAULT NULL,
+  created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  INDEX idx_gainxp_utilisateur_date (id_utilisateur, created_at),
+  CONSTRAINT FK_GainXP_Utilisateur FOREIGN KEY (id_utilisateur)
+    REFERENCES Utilisateur(id) ON DELETE CASCADE,
+  CONSTRAINT FK_GainXP_Resultats FOREIGN KEY (id_resultat)
+    REFERENCES Resultats(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ── Catégories ──────────────────────────────────────────────────

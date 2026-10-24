@@ -20,7 +20,7 @@ const makeRes = () => {
 };
 
 // ─────────────────────────────────────────────────────────
-// Helper : mock les 10 requêtes SQL de getStats dans l'ordre
+// Helper : mock les 12 requêtes SQL de getStats dans l'ordre
 // ─────────────────────────────────────────────────────────
 interface StatsOverrides {
   xp?: number;
@@ -31,6 +31,8 @@ interface StatsOverrides {
   facileDone?: number;
   facileTotal?: number;
   moyenNb?: number;
+  xpAujourdhui?: number;
+  objectifQuotidien?: number;
 }
 
 const setupGetStats = ({
@@ -42,6 +44,8 @@ const setupGetStats = ({
   facileDone = 0,
   facileTotal = 0,
   moyenNb = 0,
+  xpAujourdhui = 0,
+  objectifQuotidien = 30,
 }: StatsOverrides = {}) => {
   mockExecute
     .mockResolvedValueOnce([[]])                        // 1. parType
@@ -60,6 +64,8 @@ const setupGetStats = ({
     .mockResolvedValueOnce([                            // 10. Serie (streak stocké)
       streak === undefined ? [] : [{ serie_actuelle: streak, gels_disponibles: gelsDisponibles }],
     ])
+    .mockResolvedValueOnce([[{ xp_jour: xpAujourdhui }]])           // 11. xpAujourdhuiRes
+    .mockResolvedValueOnce([[{ objectif_quotidien_xp: objectifQuotidien }]]) // 12. utilisateurRows
     ;
 };
 
@@ -149,6 +155,29 @@ describe('getStats — série (lecture depuis la table Serie)', () => {
 
     expect(res.json.mock.calls[0][0].streak).toBe(12);
     expect(res.json.mock.calls[0][0].gelsDisponibles).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────
+describe('getStats — XP du jour et objectif quotidien', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("relaie l'XP gagné aujourd'hui et l'objectif quotidien tels quels", async () => {
+    setupGetStats({ xpAujourdhui: 45, objectifQuotidien: 50 });
+    const res = makeRes();
+    await getStats(makeReq(), res);
+
+    expect(res.json.mock.calls[0][0].xpAujourdhui).toBe(45);
+    expect(res.json.mock.calls[0][0].objectifQuotidien).toBe(50);
+  });
+
+  it('valeurs par défaut (0 XP aujourd\'hui, objectif 30) si rien de spécifié', async () => {
+    setupGetStats();
+    const res = makeRes();
+    await getStats(makeReq(), res);
+
+    expect(res.json.mock.calls[0][0].xpAujourdhui).toBe(0);
+    expect(res.json.mock.calls[0][0].objectifQuotidien).toBe(30);
   });
 });
 

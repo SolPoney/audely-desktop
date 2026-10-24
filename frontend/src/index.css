@@ -302,6 +302,70 @@ body {
   opacity: 0.5;
 }
 
+/* ── Onboarding ── */
+.onb-titre {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.onb-sous-titre {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.onb-choix-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-bottom: 1.5rem;
+}
+
+.onb-choix-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-white);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: left;
+}
+
+.onb-choix-card:hover { border-color: var(--color-border-hover); }
+
+.onb-choix-card--select {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.onb-choix-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.onb-choix-label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.onb-choix-sous {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 /* ── Formulaire ── */
 .form-group { margin-bottom: 1rem; }
 
@@ -2933,6 +2997,33 @@ body {
 .db-hero-xp-hint strong {
   color: rgba(255,255,255,0.82);
   font-weight: 700;
+}
+
+.db-hero-objectif {
+  margin-top: 0.75rem;
+}
+
+.db-hero-objectif-ligne {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 0.3rem;
+}
+
+.db-hero-objectif-bar {
+  height: 5px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.db-hero-objectif-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FBBF24, #F97316);
+  border-radius: 99px;
+  transition: width 0.6s ease;
 }
 
 /* ── Section cartes ── */

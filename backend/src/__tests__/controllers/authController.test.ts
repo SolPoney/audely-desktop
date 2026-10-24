@@ -21,6 +21,10 @@ import type { Request, Response } from 'express';
 const mockExecute = vi.mocked(pool.execute);
 const mockVerify = vi.mocked(argon2.verify);
 
+// register() et login() signent toutes deux un JWT désormais (auto-login à
+// l'inscription) — fixé une fois ici plutôt que dans un seul test isolé.
+process.env.JWT_SECRET = 'test_secret';
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Create a minimal Express Request mock */
@@ -66,12 +70,15 @@ describe('authController — security & input validation', () => {
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
-    it('accepts a valid registration and returns 201', async () => {
+    it('accepts a valid registration, returns 201 and auto-logs in (token + onboardingFait: false)', async () => {
       mockExecute.mockResolvedValueOnce([{ insertId: 1, affectedRows: 1 }] as any);
       const req = makeReq({ nom: 'Dupont', prenom: 'Marie', email: 'marie@audely.fr', mot_de_passe: 'validPass1' });
       const res = makeRes();
       await register(req as Request, res);
       expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ token: expect.any(String), onboardingFait: false }),
+      );
     });
 
     it('returns 409 when the email is already taken (ER_DUP_ENTRY)', async () => {
@@ -114,7 +121,6 @@ describe('authController — security & input validation', () => {
     });
 
     it('returns a token (200) for valid credentials', async () => {
-      process.env.JWT_SECRET = 'test_secret';
       mockExecute.mockResolvedValueOnce([[{ id: 1, mail: 'u@audely.fr', mot_de_passe: '$argon2id$hashed' }]] as any);
       mockVerify.mockResolvedValueOnce(true);
       const req = makeReq({ email: 'u@audely.fr', mot_de_passe: 'validPass1' });

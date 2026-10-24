@@ -6,6 +6,9 @@ vi.mock('../../config/db.js', () => ({
 vi.mock('../../services/serieService.js', () => ({
   mettreAJourSerie: vi.fn(),
 }));
+vi.mock('../../services/xpService.js', () => ({
+  enregistrerGainXP: vi.fn(),
+}));
 vi.mock('../../controllers/queteController.js', () => ({
   updateRevision: vi.fn(),
 }));
@@ -13,10 +16,12 @@ vi.mock('../../controllers/queteController.js', () => ({
 import pool from '../../config/db.js';
 import { saveResultat } from '../../controllers/resultatController.js';
 import { mettreAJourSerie } from '../../services/serieService.js';
+import { enregistrerGainXP } from '../../services/xpService.js';
 import { updateRevision } from '../../controllers/queteController.js';
 
 const mockGetConnection = vi.mocked(pool.getConnection);
 const mockMettreAJourSerie = vi.mocked(mettreAJourSerie);
+const mockEnregistrerGainXP = vi.mocked(enregistrerGainXP);
 const mockUpdateRevision = vi.mocked(updateRevision);
 
 const makeReq = (body: any, userId: number | undefined = 1) =>
@@ -28,12 +33,20 @@ const makeRes = () => {
   return res;
 };
 
-const makeConnection = () => ({
+const makeConnection = (niveau = 'facile') => ({
   beginTransaction: vi.fn(),
   commit: vi.fn(),
   rollback: vi.fn(),
   release: vi.fn(),
-  execute: vi.fn().mockResolvedValue([{ affectedRows: 1 }]),
+  execute: vi.fn().mockImplementation((sql: string) => {
+    if (sql.includes('SELECT niveau FROM Exercices')) {
+      return Promise.resolve([[{ niveau }]]);
+    }
+    if (sql.includes('INSERT INTO Resultats')) {
+      return Promise.resolve([{ insertId: 99, affectedRows: 1 }]);
+    }
+    return Promise.resolve([{ affectedRows: 1 }]);
+  }),
 });
 
 describe('saveResultat', () => {
@@ -41,8 +54,8 @@ describe('saveResultat', () => {
     vi.clearAllMocks();
   });
 
-  it('insère le résultat, met à jour la série, puis le FSRS hors transaction, et renvoie 201', async () => {
-    const connection = makeConnection();
+  it('insère le résultat, met à jour la série et l\'XP, puis le FSRS hors transaction, et renvoie 201', async () => {
+    const connection = makeConnection('moyen');
     mockGetConnection.mockResolvedValue(connection as any);
     mockMettreAJourSerie.mockResolvedValue({
       streakAvant: 2,
@@ -52,6 +65,7 @@ describe('saveResultat', () => {
       gelsDisponibles: 1,
       nouveauRecord: true,
     });
+    mockEnregistrerGainXP.mockResolvedValue({ montantBase: 20, bonus: 5, total: 25 });
 
     const req = makeReq({ id_exercice: 5, score: 80 });
     const res = makeRes();
@@ -59,16 +73,24 @@ describe('saveResultat', () => {
 
     expect(connection.beginTransaction).toHaveBeenCalled();
     expect(connection.execute).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT niveau FROM Exercices'),
+      [5],
+    );
+    expect(connection.execute).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO Resultats'),
       [1, 5, 80],
     );
     expect(mockMettreAJourSerie).toHaveBeenCalledWith(connection, 1);
+    expect(mockEnregistrerGainXP).toHaveBeenCalledWith(connection, 1, 99, 80, 'moyen');
     expect(connection.commit).toHaveBeenCalled();
     expect(connection.release).toHaveBeenCalled();
     expect(mockUpdateRevision).toHaveBeenCalledWith(1, 5, 80);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ serie: expect.objectContaining({ streakActuelle: 3 }) }),
+      expect.objectContaining({
+        serie: expect.objectContaining({ streakActuelle: 3 }),
+        xp: expect.objectContaining({ total: 25 }),
+      }),
     );
   });
 

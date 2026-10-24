@@ -51,6 +51,8 @@ export const getStats = async (req: Request, res: Response) => {
       [moyenRes],
       [progressionRaw],
       [serieRows],
+      [xpAujourdhuiRes],
+      [utilisateurRows],
     ] = await Promise.all([
       // 1. Score moyen par type d'exercice
       pool.execute(`
@@ -100,14 +102,11 @@ export const getStats = async (req: Request, res: Response) => {
         ORDER BY jour DESC
       `, [userId]),
 
-      // 5. XP
-      pool.execute(`
-        SELECT COALESCE(SUM(
-          r.score * CASE e.niveau WHEN 'facile' THEN 0.15 WHEN 'moyen' THEN 0.25 ELSE 0.35 END
-        ), 0) AS total_xp
-        FROM Resultats r JOIN Exercices e ON r.id_exercice = e.id
-        WHERE r.id_utilisateur = ?
-      `, [userId]),
+      // 5. XP total (journal GainXP — remplace le calcul à la volée sur Resultats)
+      pool.execute(
+        'SELECT COALESCE(SUM(montant), 0) AS total_xp FROM GainXP WHERE id_utilisateur = ?',
+        [userId],
+      ),
 
       // 6. Données pour les badges (le max/total_sessions réutilise "global" ci-dessus)
       pool.execute(`
@@ -138,11 +137,26 @@ export const getStats = async (req: Request, res: Response) => {
         'SELECT serie_actuelle, gels_disponibles FROM Serie WHERE id_utilisateur = ?',
         [userId],
       ),
+
+      // 9. XP gagné aujourd'hui (pour la jauge d'objectif quotidien)
+      pool.execute(
+        "SELECT COALESCE(SUM(montant), 0) AS xp_jour FROM GainXP WHERE id_utilisateur = ? AND DATE(created_at) = CURDATE()",
+        [userId],
+      ),
+
+      // 10. Objectif quotidien choisi à l'onboarding
+      pool.execute(
+        'SELECT objectif_quotidien_xp FROM Utilisateur WHERE id = ?',
+        [userId],
+      ),
     ]) as any[];
 
     const serieInfo = (serieRows as any[])[0];
     const streak = serieInfo?.serie_actuelle ?? 0;
     const gelsDisponibles = serieInfo?.gels_disponibles ?? 0;
+
+    const xpAujourdhui = (xpAujourdhuiRes as any[])[0]?.xp_jour ?? 0;
+    const objectifQuotidien = (utilisateurRows as any[])[0]?.objectif_quotidien_xp ?? 30;
 
     const totalXP = Math.round((xpRes as any[])[0].total_xp);
     const niveauInfo = getNiveau(totalXP);
@@ -213,6 +227,8 @@ export const getStats = async (req: Request, res: Response) => {
       gelsDisponibles,
       questDuJour,
       xp: totalXP,
+      xpAujourdhui,
+      objectifQuotidien,
       niveau: niveauInfo,
       badges,
       progression: (progressionRaw as any[]).reverse(),
