@@ -50,6 +50,7 @@ export const getStats = async (req: Request, res: Response) => {
       [facileTotalRes],
       [moyenRes],
       [progressionRaw],
+      [serieRows],
     ] = await Promise.all([
       // 1. Score moyen par type d'exercice
       pool.execute(`
@@ -129,31 +130,19 @@ export const getStats = async (req: Request, res: Response) => {
         ORDER BY r.date_session DESC
         LIMIT 20
       `, [userId]),
+
+      // 8. Série stockée (remplace le calcul à la volée — seule source qui
+      // sait représenter un jour couvert par un gel, qui n'a pas de ligne
+      // Resultats correspondante)
+      pool.execute(
+        'SELECT serie_actuelle, gels_disponibles FROM Serie WHERE id_utilisateur = ?',
+        [userId],
+      ),
     ]) as any[];
 
-    // Le jour le plus récent avec un exercice doit être aujourd'hui OU hier
-    // (délai de grâce : ne pas casser une série de 30 jours juste parce que
-    // l'utilisateur n'a pas encore fait son exercice du jour au moment de l'appel).
-    let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const joursList = jours as any[];
-    if (joursList.length > 0) {
-      const plusRecent = new Date(joursList[0].jour);
-      plusRecent.setHours(0, 0, 0, 0);
-      const ecartJours = Math.round((today.getTime() - plusRecent.getTime()) / 86400000);
-      if (ecartJours <= 1) {
-        const expected = new Date(plusRecent);
-        for (let i = 0; i < joursList.length; i++) {
-          const jour = new Date(joursList[i].jour);
-          jour.setHours(0, 0, 0, 0);
-          if (jour.getTime() === expected.getTime()) {
-            streak++;
-            expected.setDate(expected.getDate() - 1);
-          } else break;
-        }
-      }
-    }
+    const serieInfo = (serieRows as any[])[0];
+    const streak = serieInfo?.serie_actuelle ?? 0;
+    const gelsDisponibles = serieInfo?.gels_disponibles ?? 0;
 
     const totalXP = Math.round((xpRes as any[])[0].total_xp);
     const niveauInfo = getNiveau(totalXP);
@@ -221,6 +210,7 @@ export const getStats = async (req: Request, res: Response) => {
       parType,
       historique,
       streak,
+      gelsDisponibles,
       questDuJour,
       xp: totalXP,
       niveau: niveauInfo,

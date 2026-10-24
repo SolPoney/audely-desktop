@@ -98,6 +98,21 @@ CREATE TABLE Revisions (
     REFERENCES Exercices(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Série (streak) persistée, avec gels — voir backend/src/services/serieService.ts.
+-- Remplace le calcul "à la volée" historique : seule une valeur stockée peut
+-- représenter un jour manqué couvert par un gel (sans ligne Resultats ce jour-là).
+CREATE TABLE Serie (
+  id_utilisateur         INT NOT NULL,
+  serie_actuelle         INT NOT NULL DEFAULT 0,
+  serie_record           INT NOT NULL DEFAULT 0,
+  dernier_jour_actif     DATE NOT NULL,
+  gels_disponibles       TINYINT NOT NULL DEFAULT 1,
+  derniere_recharge_gel  DATE NOT NULL,
+  PRIMARY KEY (id_utilisateur),
+  CONSTRAINT FK_Serie_Utilisateur FOREIGN KEY (id_utilisateur)
+    REFERENCES Utilisateur(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ── Catégories ──────────────────────────────────────────────────
 
 INSERT INTO Categorie (id, titre) VALUES

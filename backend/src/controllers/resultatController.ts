@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import { Request, Response } from 'express';
 import { updateRevision } from './queteController.js';
+import { mettreAJourSerie } from '../services/serieService.js';
 
 /**
  * Save an exercise result and update the spaced-repetition schedule (FSRS).
@@ -33,15 +34,34 @@ export const saveResultat = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Le score doit être compris entre 0 et 100.' });
     }
 
-    await pool.execute(
-      'INSERT INTO Resultats (id_utilisateur, id_exercice, score) VALUES (?, ?, ?)',
-      [userId, exerciceId, scoreNum]
-    );
+    // Resultats + Serie sont écrits ensemble dans une transaction : la série
+    // ne doit jamais avancer sans que le résultat qui la justifie soit
+    // réellement enregistré (et vice versa).
+    const connection = await pool.getConnection();
+    let resultatSerie;
+    try {
+      await connection.beginTransaction();
 
-    // Update spaced-repetition schedule (FSRS algorithm)
+      await connection.execute(
+        'INSERT INTO Resultats (id_utilisateur, id_exercice, score) VALUES (?, ?, ?)',
+        [userId, exerciceId, scoreNum]
+      );
+
+      resultatSerie = await mettreAJourSerie(connection, userId);
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+
+    // Update spaced-repetition schedule (FSRS algorithm) — hors transaction,
+    // comme avant : un échec ici ne doit pas annuler le résultat déjà enregistré.
     await updateRevision(userId, exerciceId, scoreNum);
 
-    res.status(201).json({ message: 'Résultat enregistré' });
+    res.status(201).json({ message: 'Résultat enregistré', serie: resultatSerie });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

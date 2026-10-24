@@ -20,11 +20,12 @@ const makeRes = () => {
 };
 
 // ─────────────────────────────────────────────────────────
-// Helper : mock les 9 requêtes SQL de getStats dans l'ordre
+// Helper : mock les 10 requêtes SQL de getStats dans l'ordre
 // ─────────────────────────────────────────────────────────
 interface StatsOverrides {
   xp?: number;
-  streak_jours?: string[];   // dates ISO 'YYYY-MM-DD', ordre DESC
+  streak?: number;           // Serie.serie_actuelle simulée ; undefined = pas de ligne Serie (streak 0)
+  gelsDisponibles?: number;
   totalSessions?: number;
   maxScore?: number;
   facileDone?: number;
@@ -34,7 +35,8 @@ interface StatsOverrides {
 
 const setupGetStats = ({
   xp = 0,
-  streak_jours = [],
+  streak,
+  gelsDisponibles = 0,
   totalSessions = 0,
   maxScore = 0,
   facileDone = 0,
@@ -49,26 +51,16 @@ const setupGetStats = ({
       score_global: 0,
       meilleur_score: maxScore,
     }]])
-    .mockResolvedValueOnce([                            // 4. jours (streak)
-      streak_jours.map(j => ({ jour: j })),
-    ])
+    .mockResolvedValueOnce([[]])                        // 4. jours (questDuJour)
     .mockResolvedValueOnce([[{ total_xp: xp }]])        // 5. xpRes
     .mockResolvedValueOnce([[{ done: facileDone }]])    // 6. facileDoneRes
     .mockResolvedValueOnce([[{ total: facileTotal }]])  // 7. facileTotalRes
     .mockResolvedValueOnce([[{ nb: moyenNb }]])         // 8. moyenRes
     .mockResolvedValueOnce([[]])                        // 9. progression
+    .mockResolvedValueOnce([                            // 10. Serie (streak stocké)
+      streak === undefined ? [] : [{ serie_actuelle: streak, gels_disponibles: gelsDisponibles }],
+    ])
     ;
-};
-
-// Dates pour les tests de streak — utilise la date LOCALE (pas UTC)
-// pour correspondre à la comparaison faite dans le controller
-const dayOffset = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const j = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${j}`;
 };
 
 // ─────────────────────────────────────────────────────────
@@ -135,67 +127,28 @@ describe('getStats — calcul du niveau (XP)', () => {
 });
 
 // ─────────────────────────────────────────────────────────
-describe('getStats — calcul du streak', () => {
+// Le calcul de la série (grâce, gels) vit maintenant dans serieService —
+// voir src/__tests__/services/serieService.test.ts. Ici on vérifie juste
+// que getStats relaie fidèlement la ligne Serie telle que lue en base.
+describe('getStats — série (lecture depuis la table Serie)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('aucune session → streak 0', async () => {
-    setupGetStats({ streak_jours: [] });
+  it('aucune ligne Serie → streak 0, gelsDisponibles 0', async () => {
+    setupGetStats({ streak: undefined });
     const res = makeRes();
     await getStats(makeReq(), res);
 
     expect(res.json.mock.calls[0][0].streak).toBe(0);
+    expect(res.json.mock.calls[0][0].gelsDisponibles).toBe(0);
   });
 
-  it("seulement aujourd'hui -> streak 1", async () => {
-    setupGetStats({ streak_jours: [dayOffset(0)] });
+  it('ligne Serie existante → streak et gelsDisponibles relayés tels quels', async () => {
+    setupGetStats({ streak: 12, gelsDisponibles: 1 });
     const res = makeRes();
     await getStats(makeReq(), res);
 
-    expect(res.json.mock.calls[0][0].streak).toBe(1);
-  });
-
-  it('3 jours consécutifs → streak 3', async () => {
-    setupGetStats({
-      streak_jours: [dayOffset(0), dayOffset(1), dayOffset(2)],
-    });
-    const res = makeRes();
-    await getStats(makeReq(), res);
-
-    expect(res.json.mock.calls[0][0].streak).toBe(3);
-  });
-
-  it('trou dans la série → streak coupé', async () => {
-    // aujourd'hui et il y a 2 jours, mais pas hier → série brisée après 1
-    setupGetStats({
-      streak_jours: [dayOffset(0), dayOffset(2)],
-    });
-    const res = makeRes();
-    await getStats(makeReq(), res);
-
-    expect(res.json.mock.calls[0][0].streak).toBe(1);
-  });
-
-  it("3 jours consécutifs jusqu'à hier, rien fait aujourd'hui → streak conservé à 3 (délai de grâce)", async () => {
-    // Régression : l'utilisateur n'a pas encore fait son exercice du jour,
-    // mais sa série des 3 derniers jours (hier, avant-hier, avant-avant-hier)
-    // ne doit pas retomber à 0 pour autant.
-    setupGetStats({
-      streak_jours: [dayOffset(1), dayOffset(2), dayOffset(3)],
-    });
-    const res = makeRes();
-    await getStats(makeReq(), res);
-
-    expect(res.json.mock.calls[0][0].streak).toBe(3);
-  });
-
-  it("dernier exercice il y a 2 jours (pas hier) → streak 0, pas de délai de grâce au-delà d'un jour", async () => {
-    setupGetStats({
-      streak_jours: [dayOffset(2), dayOffset(3)],
-    });
-    const res = makeRes();
-    await getStats(makeReq(), res);
-
-    expect(res.json.mock.calls[0][0].streak).toBe(0);
+    expect(res.json.mock.calls[0][0].streak).toBe(12);
+    expect(res.json.mock.calls[0][0].gelsDisponibles).toBe(1);
   });
 });
 
@@ -230,11 +183,8 @@ describe('getStats — badges', () => {
     expect(badge.unlocked).toBe(true);
   });
 
-  it('"Star" (streak 3) débloqué avec 3 jours consécutifs', async () => {
-    setupGetStats({
-      streak_jours: [dayOffset(0), dayOffset(1), dayOffset(2)],
-      totalSessions: 3,
-    });
+  it('"Star" (streak 3) débloqué avec une série de 3 jours', async () => {
+    setupGetStats({ streak: 3, totalSessions: 3 });
     const res = makeRes();
     await getStats(makeReq(), res);
 
@@ -242,11 +192,8 @@ describe('getStats — badges', () => {
     expect(badge.unlocked).toBe(true);
   });
 
-  it('"Star" verrouillé avec seulement 2 jours consécutifs', async () => {
-    setupGetStats({
-      streak_jours: [dayOffset(0), dayOffset(1)],
-      totalSessions: 2,
-    });
+  it('"Star" verrouillé avec une série de seulement 2 jours', async () => {
+    setupGetStats({ streak: 2, totalSessions: 2 });
     const res = makeRes();
     await getStats(makeReq(), res);
 

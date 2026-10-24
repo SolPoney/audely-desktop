@@ -2900,6 +2900,10 @@ body {
   color: #FED7AA;
 }
 
+.db-hero-chip-gel {
+  color: #7DD3FC;
+}
+
 .db-hero-chip--xp {
   background: rgba(20,184,166,0.18);
   border: 1.5px solid rgba(20,184,166,0.38);

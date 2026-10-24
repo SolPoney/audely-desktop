@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
 import {
 	Moon, Sun, LogOut, Headphones, Music, BarChart2,
-	Flame, Zap,
+	Flame, Zap, Snowflake,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 import { getUser } from "../hooks/useAuth";
@@ -18,6 +18,7 @@ const DashboardPage = () => {
 	const [xp, setXp]               = useState<number | null>(null);
 	const [niveau, setNiveau]        = useState<Niveau | null>(null);
 	const [streak, setStreak]        = useState(0);
+	const [gelsDisponibles, setGelsDisponibles] = useState(0);
 	const [queteNb, setQueteNb]      = useState(0);
 	const [queteTotal, setQueteTotal] = useState(3);
 	const [queteFaite, setQueteFaite] = useState(false);
@@ -31,6 +32,7 @@ const DashboardPage = () => {
 				setXp(data.xp ?? 0);
 				setNiveau(data.niveau ?? null);
 				setStreak(data.streak ?? 0);
+				setGelsDisponibles(data.gelsDisponibles ?? 0);
 			})
 
 		fetch(`${API_URL}/api/quete-du-jour`, { headers: { Authorization: `Bearer ${token}` } })
@@ -94,9 +96,12 @@ const DashboardPage = () => {
 									</span>
 									{streak > 0 && (
 										<span className="db-hero-chip db-hero-chip--streak"
-											aria-label={`${streak} jours consécutifs`}>
+											aria-label={`${streak} jours consécutifs${gelsDisponibles > 0 ? ", un gel de série disponible" : ""}`}>
 											<Flame size={12} strokeWidth={2.5} aria-hidden="true" />
 											{streak}&nbsp;jour{streak > 1 ? "s" : ""}
+											{gelsDisponibles > 0 && (
+												<Snowflake size={11} strokeWidth={2.5} aria-hidden="true" className="db-hero-chip-gel" />
+											)}
 										</span>
 									)}
 									<span className="db-hero-chip db-hero-chip--xp">{xp.toLocaleString("fr-FR")}&nbsp;XP</span>
