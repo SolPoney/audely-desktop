@@ -4140,6 +4140,45 @@ body {
   margin-top: 0.5rem;
 }
 
+/* ── Gains (XP, série) ── */
+.rs-gains {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.rs-gain-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 0.3rem 0.75rem;
+  white-space: nowrap;
+}
+
+.rs-gain-chip--xp {
+  background: rgba(20,184,166,0.2);
+  border: 1.5px solid rgba(20,184,166,0.45);
+  color: #99F6E4;
+}
+
+.rs-gain-chip--streak {
+  background: rgba(249,115,22,0.2);
+  border: 1.5px solid rgba(249,115,22,0.45);
+  color: #FED7AA;
+}
+
+.rs-palier {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #FDE68A;
+  margin-top: 0.5rem;
+}
+
 /* ── Étoiles ── */
 .rs-stars {
   display: flex;

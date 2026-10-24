@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
 import { API_URL } from "../config/api";
 import { lireTexte, arreterLectureAudio } from "../utils/tts";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 import { NIVEAU_LABEL } from "../utils/niveau";
 
@@ -49,6 +49,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 	const [phase, setPhase]         = useState<Phase>("serie");
 	const [choix, setChoix]         = useState<string | null>(null);
 	const [score, setScore]         = useState(0);
+	const [gain, setGain]           = useState<ResultatEnregistre | null>(null);
 	const [ecran, setEcran]         = useState<"exercice" | "resultats">("exercice");
 	const [jouant, setJouant]       = useState(false);
 
@@ -92,7 +93,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			await enregistrerResultat(exercice.id, Math.round((score / total) * 100));
+			setGain(await enregistrerResultat(exercice.id, Math.round((score / total) * 100)));
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
@@ -102,7 +103,7 @@ const MotSimilaireExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / total) * 100);
-		return <ResultScreen score={pct} bonnes={score} total={total} />;
+		return <ResultScreen score={pct} bonnes={score} total={total} gain={gain} />;
 	}
 
 	if (!question) return null;

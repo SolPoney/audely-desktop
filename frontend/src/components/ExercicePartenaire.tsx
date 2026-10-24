@@ -4,7 +4,7 @@ import { API_URL } from "../config/api";
 import { X, Volume2, ChevronRight, Check } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut, type NiveauBruit } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 
 interface Props {
@@ -649,6 +649,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 	const [index, setIndex] = useState(0);
 	const [choixUser, setChoixUser] = useState<string | null>(null);
 	const [score, setScore] = useState(0);
+	const [gain, setGain] = useState<ResultatEnregistre | null>(null);
 	const [aEcoute, setAEcoute] = useState(false); // choix masqués jusqu'à la 1ère écoute
 	const bruitCtrlRef = useRef<{ stop: () => void } | null>(null);
 	const audioCtxBruitRef = useRef<AudioContext | null>(null);
@@ -709,7 +710,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 			bruitCtrlRef.current?.stop();
 			bruitCtrlRef.current = null;
 			const pct = Math.round(score / total * 100);
-			await enregistrerResultat(exercice.id, pct);
+			setGain(await enregistrerResultat(exercice.id, pct));
 			setEcran("termine");
 		} else {
 			setIndex(i => i + 1);
@@ -783,7 +784,7 @@ const ExercicePartenaire = ({ exercice }: Props) => {
 	/* ── Terminé ── */
 	if (ecran === "termine") {
 		const final = Math.round(score / total * 100);
-		return <ResultScreen score={final} bonnes={score} total={total} />;
+		return <ResultScreen score={final} bonnes={score} total={total} gain={gain} />;
 	}
 
 	if (!question) return null;

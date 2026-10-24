@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { API_URL } from "../config/api";
 import { X, ChevronRight } from "lucide-react";
 import { lireTexte, arreterLectureAudio } from "../utils/tts";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 import { NIVEAU_LABEL } from "../utils/niveau";
 
@@ -36,6 +36,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	const [feedback, setFeedback] = useState<"ok" | "ko" | null>(null);
 	const [score, setScore]       = useState(0);
 	const [jouant, setJouant]     = useState(false);
+	const [gain, setGain]         = useState<ResultatEnregistre | null>(null);
 
 	const question = mots[index];
 
@@ -69,7 +70,8 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= total) {
-			await enregistrerResultat(exercice.id, Math.round((score / total) * 100));
+			const g = await enregistrerResultat(exercice.id, Math.round((score / total) * 100));
+			setGain(g);
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
@@ -79,7 +81,7 @@ const DecisionOrthographiqueExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / total) * 100);
-		return <ResultScreen score={pct} bonnes={score} total={total} />;
+		return <ResultScreen score={pct} bonnes={score} total={total} gain={gain} />;
 	}
 
 	if (!question) return null;

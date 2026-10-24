@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 import { NIVEAU_LABEL } from "../utils/niveau";
 
@@ -51,6 +51,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 	const [reponse, setReponse]             = useState<Duree | null>(null);
 	const [feedback, setFeedback]           = useState<"ok" | "ko" | null>(null);
 	const [score, setScore]                 = useState(0);
+	const [gain, setGain]                   = useState<ResultatEnregistre | null>(null);
 	const [sonJoue, setSonJoue]             = useState(false);
 	const ctxRef = useRef<AudioContext | null>(null);
 
@@ -71,7 +72,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (questionNum >= TOTAL) {
-			await enregistrerResultat(exercice.id, Math.round((score / TOTAL) * 100));
+			setGain(await enregistrerResultat(exercice.id, Math.round((score / TOTAL) * 100)));
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
@@ -85,7 +86,7 @@ const CourtMoyenLongExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / TOTAL) * 100);
-		return <ResultScreen score={pct} bonnes={score} total={TOTAL} />;
+		return <ResultScreen score={pct} bonnes={score} total={TOTAL} gain={gain} />;
 	}
 
 	/* ── Exercice ── */

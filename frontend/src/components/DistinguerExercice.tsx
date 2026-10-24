@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Equal, Divide, ChevronRight } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 
 interface Props {
@@ -62,6 +62,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 	const [reponse, setReponse]       = useState<Reponse | null>(null);
 	const [feedback, setFeedback]     = useState<"ok" | "ko" | null>(null);
 	const [score, setScore]           = useState(0);
+	const [gain, setGain]             = useState<ResultatEnregistre | null>(null);
 	const [sonAJoue, setSonAJoue]     = useState(false);
 	const [sonBJoue, setSonBJoue]     = useState(false);
 	const ctxRef = useRef<AudioContext | null>(null);
@@ -106,7 +107,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (questionNum >= totalQuestions) {
-			await enregistrerResultat(exercice.id, Math.round((score / totalQuestions) * 100));
+			setGain(await enregistrerResultat(exercice.id, Math.round((score / totalQuestions) * 100)));
 			setEcran("resultats");
 		} else {
 			setQuestionNum(n => n + 1);
@@ -121,7 +122,7 @@ const DistinguerExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / totalQuestions) * 100);
-		return <ResultScreen score={pct} bonnes={score} total={totalQuestions} />;
+		return <ResultScreen score={pct} bonnes={score} total={totalQuestions} gain={gain} />;
 	}
 
 	/* ── Exercice ── */

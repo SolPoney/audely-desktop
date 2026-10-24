@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 import { NIVEAU_LABEL } from "../utils/niveau";
 
@@ -88,6 +88,7 @@ const GraveAiguExercice = ({ exercice }: Props) => {
 	const [choix, setChoix]       = useState<TypeSon | null>(null);
 	const [feedback, setFeedback] = useState<"ok" | "ko" | null>(null);
 	const [score, setScore]       = useState(0);
+	const [gain, setGain]         = useState<ResultatEnregistre | null>(null);
 	const [ecran, setEcran]       = useState<"exercice" | "resultats">("exercice");
 	const [jouant, setJouant]     = useState(false);
 
@@ -129,7 +130,7 @@ const GraveAiguExercice = ({ exercice }: Props) => {
 
 	const suivant = async () => {
 		if (index + 1 >= TOTAL) {
-			await enregistrerResultat(exercice.id, Math.round((score / TOTAL) * 100));
+			setGain(await enregistrerResultat(exercice.id, Math.round((score / TOTAL) * 100)));
 			setEcran("resultats");
 		} else {
 			setIndex(i => i + 1);
@@ -139,7 +140,7 @@ const GraveAiguExercice = ({ exercice }: Props) => {
 	/* ── Résultats ── */
 	if (ecran === "resultats") {
 		const pct = Math.round((score / TOTAL) * 100);
-		return <ResultScreen score={pct} bonnes={score} total={TOTAL} />;
+		return <ResultScreen score={pct} bonnes={score} total={TOTAL} gain={gain} />;
 	}
 
 	/* ── Exercice ── */

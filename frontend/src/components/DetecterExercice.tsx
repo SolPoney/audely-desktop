@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Play, Pause, Clock } from "lucide-react";
 import { demarrerBruitFond, niveauBruitParDefaut } from "../utils/bruitFond";
 import { NIVEAU_LABEL } from "../utils/niveau";
-import { enregistrerResultat } from "../utils/resultats";
+import { enregistrerResultat, type ResultatEnregistre } from "../utils/resultats";
 import ResultScreen from "./ResultScreen";
 
 interface Props {
@@ -71,6 +71,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 	const [feedback, setFeedback]     = useState<boolean>(false);
 	const [bonnes, setBonnes]         = useState(0);
 	const [total, setTotal]           = useState(0);
+	const [gain, setGain]             = useState<ResultatEnregistre | null>(null);
 
 	/* Arc de progression SVG */
 	const RING_R = 76;
@@ -124,7 +125,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 			const score = soundTimes.current.length > 0
 				? Math.round((bonnesR / soundTimes.current.length) * 100)
 				: 0;
-			await enregistrerResultat(exercice.id, score);
+			setGain(await enregistrerResultat(exercice.id, score));
 		}, params.duree * 1000);
 
 		timersRef.current = [
@@ -160,7 +161,7 @@ const DetecterExercice = ({ exercice }: Props) => {
 	/* ── Écran résultats ── */
 	if (ecran === "resultats") {
 		const pct = total > 0 ? Math.round((bonnes / total) * 100) : 0;
-		return <ResultScreen score={pct} bonnes={bonnes} total={total} />;
+		return <ResultScreen score={pct} bonnes={bonnes} total={total} gain={gain} />;
 	}
 
 	/* ── Écran exercice ── */

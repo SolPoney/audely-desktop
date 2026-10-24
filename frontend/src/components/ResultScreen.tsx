@@ -1,13 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, RotateCcw, Home, Trophy, Zap, Heart } from "lucide-react";
+import { Star, RotateCcw, Home, Trophy, Zap, Heart, Flame } from "lucide-react";
+import type { ResultatEnregistre } from "../utils/resultats";
 
 interface Props {
 	score: number;       // 0-100
 	bonnes: number;
 	total: number;
 	onRejouer?: () => void;
+	gain?: ResultatEnregistre | null;
 }
+
+// Mêmes paliers que les badges "série" de statsController.ts — dupliqués ici
+// car ce composant n'a accès qu'à la réponse de POST /api/resultats, pas à
+// la liste complète des badges (qui vient d'un autre appel, GET /api/stats).
+const PALIERS_SERIE = [3, 5, 7, 14, 31, 50, 100, 365];
 
 /* ── Config par pallier ── */
 const getTier = (score: number) => {
@@ -132,7 +139,7 @@ const AnimatedStar = ({ on, delay }: { on: boolean; delay: number }) => {
 	);
 };
 
-const ResultScreen = ({ score, bonnes, total, onRejouer }: Props) => {
+const ResultScreen = ({ score, bonnes, total, onRejouer, gain }: Props) => {
 	const navigate = useNavigate();
 	const tier     = getTier(score);
 	const Icon     = tier.icon;
@@ -142,6 +149,11 @@ const ResultScreen = ({ score, bonnes, total, onRejouer }: Props) => {
 		const t = setTimeout(() => setEntered(true), 50);
 		return () => clearTimeout(t);
 	}, []);
+
+	// La série n'avance que pour le premier exercice du jour — les suivants
+	// ne doivent pas répéter "Série : X jours" à chaque fin d'exercice.
+	const serieAAvance = !!gain?.serie && gain.serie.streakActuelle !== gain.serie.streakAvant;
+	const nouveauPalier = serieAAvance && PALIERS_SERIE.includes(gain!.serie!.streakActuelle);
 
 	return (
 		<div className="rs-page">
@@ -173,6 +185,27 @@ const ResultScreen = ({ score, bonnes, total, onRejouer }: Props) => {
 				<p className="rs-detail">
 					{bonnes} / {total} bonne{bonnes > 1 ? "s" : ""} réponse{bonnes > 1 ? "s" : ""}
 				</p>
+
+				{/* Gains (XP, série) — annoncés pour les utilisateurs de lecteur d'écran */}
+				{(gain?.xp || serieAAvance) && (
+					<div className="rs-gains" aria-live="polite">
+						{gain?.xp && (
+							<span className="rs-gain-chip rs-gain-chip--xp">
+								+<CountUp target={gain.xp.total} />&nbsp;XP
+							</span>
+						)}
+						{serieAAvance && (
+							<span className="rs-gain-chip rs-gain-chip--streak">
+								<Flame size={13} strokeWidth={2.5} aria-hidden="true" />
+								Série&nbsp;:&nbsp;{gain!.serie!.streakActuelle}&nbsp;jour{gain!.serie!.streakActuelle > 1 ? "s" : ""}
+								{gain!.serie!.gelUtilise && " (gel utilisé)"}
+							</span>
+						)}
+					</div>
+				)}
+				{nouveauPalier && (
+					<p className="rs-palier" aria-live="polite">🎉 Nouveau palier de série débloqué !</p>
+				)}
 
 				{/* Étoiles */}
 				<div className="rs-stars" aria-label={`${tier.stars} étoile${tier.stars > 1 ? "s" : ""} sur 3`}>
