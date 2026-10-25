@@ -122,85 +122,85 @@ const ParcoursListePage = () => {
 				) : exercices.length === 0 ? (
 					<p className="loading-text">Aucun exercice pour ce niveau.</p>
 				) : (
-					<ol className="pl-timeline" aria-label={`Exercices ${config.label}`}>
-						{exercices.map((ex, index) => {
-							const done     = completes.has(ex.id);
-							const unlocked = isUnlocked(index);
-							return (
-								<li
-									key={ex.id}
-									className="pl-item"
-									style={{ animationDelay: `${index * 55}ms` }}
-								>
-									<div
-										className="pl-item-left"
-										aria-hidden="true"
-										style={{ "--level-color": unlocked ? config.couleur : "#CBD5E1" } as React.CSSProperties}
+					<div
+						className="pl-map"
+						style={{ "--pl-map-progress": `${exercices.length > 0 ? Math.round((nbCompletes / exercices.length) * 100) : 0}%` } as React.CSSProperties}
+					>
+						<div className="pl-map-spine" aria-hidden="true">
+							<div className="pl-map-spine-fill" style={{ background: config.couleur }} />
+						</div>
+
+						<ol className="pl-map-list" aria-label={`Exercices ${config.label}`}>
+							{exercices.map((ex, index) => {
+								const done     = completes.has(ex.id);
+								const unlocked = isUnlocked(index);
+								// Décalage alternant gauche/centre/droite/centre, pour un tracé
+								// sinueux façon "carte de jeu" plutôt qu'une simple liste.
+								const decalage = [0, 1, 0, -1][index % 4];
+								return (
+									<li
+										key={ex.id}
+										className="pl-map-item"
+										style={{ "--pl-decalage": decalage, animationDelay: `${index * 55}ms` } as React.CSSProperties}
 									>
-										<div className="pl-cercle-wrap">
+										<div className="pl-map-node-wrap" aria-hidden="true">
 											<div
-												className="pl-cercle"
+												className="pl-map-node"
 												style={{
 													borderColor: unlocked ? config.couleur : "#CBD5E1",
-													background:  done ? config.couleur : unlocked ? config.couleur : "#F1F5F9",
+													background:  done || unlocked ? config.couleur : "#F1F5F9",
 												}}
 											>
 												{done
-													? <CheckCircle2 size={18} strokeWidth={2.5} color="white" />
+													? <CheckCircle2 size={20} strokeWidth={2.5} color="white" />
 													: unlocked
-														? <ChevronRight size={18} strokeWidth={2.5} color="white" />
-														: <Lock size={16} strokeWidth={2} color="#64748B" />
+														? <ChevronRight size={20} strokeWidth={2.5} color="white" />
+														: <Lock size={18} strokeWidth={2} color="#64748B" />
 												}
 											</div>
 											<span
-												className="pl-num-badge"
+												className="pl-map-num"
 												style={{ background: unlocked ? config.couleur : "#CBD5E1" }}
 											>
 												{String(index + 1).padStart(2, "0")}
 											</span>
 										</div>
-										{index < exercices.length - 1 && (
-											<div
-												className="pl-ligne"
-												style={{ background: done ? config.couleur : undefined }}
-											/>
-										)}
-									</div>
 
-									<button
-										type="button"
-										className={`pl-card${!unlocked ? " pl-card--locked" : ""}${done ? " pl-card--done" : ""}`}
-										onClick={() => unlocked && navigate(`/exercice/${ex.id}`)}
-										disabled={!unlocked}
-										aria-label={`Exercice ${index + 1} : ${ex.titre}${!unlocked ? " (verrouillé)" : ""}`}
-									>
-										<span className="pl-card-type" style={{ color: unlocked ? config.couleur : "#94A3B8" }}>
-											{TYPE_LABEL[ex.type_exercice] ?? "Exercice"}
-										</span>
-										<span className="pl-card-titre">{ex.titre}</span>
-										{done && (
-											<span className="plp-done-badge">
-												<CheckCircle2 size={13} strokeWidth={2.5} />
-												Complété
+										<button
+											type="button"
+											className={`pl-map-card${!unlocked ? " pl-card--locked" : ""}${done ? " pl-card--done" : ""}`}
+											onClick={() => unlocked && navigate(`/exercice/${ex.id}`)}
+											disabled={!unlocked}
+											aria-label={`Exercice ${index + 1} : ${ex.titre}${!unlocked ? " (verrouillé)" : ""}`}
+										>
+											<span className="pl-card-type" style={{ color: unlocked ? config.couleur : "#94A3B8" }}>
+												{TYPE_LABEL[ex.type_exercice] ?? "Exercice"}
 											</span>
-										)}
-										{unlocked && !done && (
-											<span className="plp-unlock-badge" style={{ "--plp-unlock-color": config.couleur } as React.CSSProperties}>
-												<Unlock size={12} strokeWidth={2.5} />
-												Débloqué
-											</span>
-										)}
-										{!unlocked && (
-											<span className="plp-lock-badge">
-												<Lock size={12} strokeWidth={2.5} />
-												Terminez l'exercice précédent
-											</span>
-										)}
-									</button>
-								</li>
-							);
-						})}
-					</ol>
+											<span className="pl-card-titre">{ex.titre}</span>
+											{done && (
+												<span className="plp-done-badge">
+													<CheckCircle2 size={13} strokeWidth={2.5} />
+													Complété
+												</span>
+											)}
+											{unlocked && !done && (
+												<span className="plp-unlock-badge" style={{ "--plp-unlock-color": config.couleur } as React.CSSProperties}>
+													<Unlock size={12} strokeWidth={2.5} />
+													Débloqué
+												</span>
+											)}
+											{!unlocked && (
+												<span className="plp-lock-badge">
+													<Lock size={12} strokeWidth={2.5} />
+													Terminez l'exercice précédent
+												</span>
+											)}
+										</button>
+									</li>
+								);
+							})}
+						</ol>
+					</div>
 				)}
 			</main>
 		</div>

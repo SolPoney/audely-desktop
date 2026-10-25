@@ -3478,6 +3478,113 @@ body {
   font-weight: 600;
 }
 
+/* ══════════════════════════════════════════════
+   CARTE DE PARCOURS (ParcoursListePage) — tracé
+   sinueux façon carte de jeu, plutôt qu'une liste
+   verticale plate. N'affecte que cette page : les
+   classes pl-timeline/pl-item/pl-cercle/pl-ligne/
+   pl-num-badge/pl-card restent utilisées telles
+   quelles par ExercicesCatPage.
+   ══════════════════════════════════════════════ */
+.pl-map {
+  position: relative;
+  padding-top: 0.5rem;
+}
+
+/* Rail central : fond neutre + remplissage coloré proportionnel à la progression */
+.pl-map-spine {
+  position: absolute;
+  left: 50%;
+  top: 28px;
+  bottom: 28px;
+  width: 4px;
+  transform: translateX(-50%);
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pl-map-spine-fill {
+  width: 100%;
+  height: var(--pl-map-progress, 0%);
+  border-radius: 2px;
+  transition: height 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pl-map-list {
+  position: relative;
+  z-index: 1;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pl-map-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: pl-fadein 0.35s ease-out both;
+}
+
+.pl-map-node-wrap {
+  position: relative;
+  flex-shrink: 0;
+  transform: translateX(calc(var(--pl-decalage, 0) * 44px));
+}
+
+.pl-map-node {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2.5px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.pl-map-num {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  padding: 0 6px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+.pl-map-card {
+  margin-top: 0.625rem;
+  transform: translateX(calc(var(--pl-decalage, 0) * 44px));
+  max-width: 210px;
+  width: 100%;
+  background: var(--color-white);
+  border: none;
+  border-radius: 14px;
+  padding: 0.75rem 0.875rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  text-align: center;
+  font-family: inherit;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.05), 0 4px 14px rgba(15,23,42,0.07);
+  transition: transform 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.pl-map-card:active { transform: translateX(calc(var(--pl-decalage, 0) * 44px)) scale(0.97); }
+
 /* ============================
    EXERCICE COURT / MOYEN / LONG
    ============================ */
