@@ -2,11 +2,21 @@ import webpush from 'web-push';
 import pool from '../config/db.js';
 import { MESSAGES_ENCOURAGEANTS, MESSAGES_RELANCE_DOUCE, type MessageRappel } from '../config/notificationMessages.js';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+// Ne doit jamais faire planter le serveur au démarrage si les clés VAPID
+// n'ont pas encore été configurées sur l'environnement (ex: juste après
+// le déploiement de cette fonctionnalité, avant l'ajout des variables sur
+// Render) — web-push lève une exception synchrone sinon.
+const vapidConfigure = () => {
+  const { VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env;
+  if (!VAPID_SUBJECT || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    console.warn('Clés VAPID absentes : les notifications push sont désactivées.');
+    return false;
+  }
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  return true;
+};
+
+const vapidPret = vapidConfigure();
 
 // Pas de préférence d'heure par utilisateur en V1 (pas collectée à
 // l'onboarding) : un créneau fixe en fin de journée. Le cron externe
@@ -33,6 +43,7 @@ export interface ResultatEnvoi {
   envoyes: number;
   erreurs: number;
   horsCreneau: boolean;
+  vapidNonConfigure?: boolean;
 }
 
 /**
@@ -42,6 +53,9 @@ export interface ResultatEnvoi {
  * réellement quelque chose que dans le créneau horaire ciblé.
  */
 export const envoyerRappelsDuJour = async (maintenant: Date = new Date()): Promise<ResultatEnvoi> => {
+  if (!vapidPret) {
+    return { envoyes: 0, erreurs: 0, horsCreneau: false, vapidNonConfigure: true };
+  }
   if (maintenant.getHours() !== HEURE_CIBLE) {
     return { envoyes: 0, erreurs: 0, horsCreneau: true };
   }

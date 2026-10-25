@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Doit s'exécuter avant l'import statique de notificationService (qui
+// configure web-push au chargement du module) — vi.hoisted garantit
+// l'ordre, contrairement à un simple `process.env.X = ...` en haut du
+// fichier qui s'exécuterait après les imports (hissés par l'ESM).
+vi.hoisted(() => {
+  process.env.VAPID_SUBJECT = 'mailto:test@example.com';
+  process.env.VAPID_PUBLIC_KEY = 'test-public-key';
+  process.env.VAPID_PRIVATE_KEY = 'test-private-key';
+});
+
 vi.mock('../../config/db.js', () => ({
   default: { execute: vi.fn() },
 }));
