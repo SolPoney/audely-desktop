@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { Request, Response } from 'express';
+import { BADGES, estDebloque } from '../config/badges.js';
 
 export const getExercicesCompletes = async (req: Request, res: Response) => {
   try {
@@ -172,52 +173,8 @@ export const getStats = async (req: Request, res: Response) => {
     const questDuJour = (jours as any[]).length > 0 &&
       new Date((jours as any[])[0].jour).toISOString().slice(0, 10) === todayStr;
 
-    const badges = [
-      {
-        id: 'premier_pas',
-        emoji: '🚀',
-        titre: 'Premier pas',
-        description: 'Complétez votre premier exercice',
-        unlocked: totalSessions >= 1,
-      },
-      {
-        id: 'score_parfait',
-        emoji: '🏆',
-        titre: 'Oreille d\'or',
-        description: 'Obtenez 100% sur un exercice',
-        unlocked: maxScore >= 100,
-      },
-      {
-        id: 'dix_sessions',
-        emoji: '💪',
-        titre: 'Persévérant',
-        description: '10 sessions au total',
-        unlocked: totalSessions >= 10,
-      },
-      {
-        id: 'facile_maitrise',
-        emoji: '⭐',
-        titre: 'Bases solides',
-        description: 'Terminez tous les exercices Facile',
-        unlocked: facileTotal > 0 && facileDone >= facileTotal,
-      },
-      {
-        id: 'niveau_moyen',
-        emoji: '🎯',
-        titre: 'En progression',
-        description: 'Commencez les exercices Moyen',
-        unlocked: moyenNb >= 1,
-      },
-      // Paliers de série
-      { id: 'serie_3',   emoji: '🔥', titre: 'Star',          description: '3 jours consécutifs',   unlocked: streak >= 3   },
-      { id: 'serie_5',   emoji: '🔥', titre: 'Superstar',     description: '5 jours consécutifs',   unlocked: streak >= 5   },
-      { id: 'serie_7',   emoji: '⚡', titre: 'Champion',      description: '7 jours consécutifs',   unlocked: streak >= 7   },
-      { id: 'serie_14',  emoji: '⚡', titre: 'Enflammé',      description: '14 jours consécutifs',  unlocked: streak >= 14  },
-      { id: 'serie_31',  emoji: '🏅', titre: 'Icône',         description: '31 jours consécutifs',  unlocked: streak >= 31  },
-      { id: 'serie_50',  emoji: '🥇', titre: 'Éminence',      description: '50 jours consécutifs',  unlocked: streak >= 50  },
-      { id: 'serie_100', emoji: '🛡️', titre: 'Invincible',    description: '100 jours consécutifs', unlocked: streak >= 100 },
-      { id: 'serie_365', emoji: '🌟', titre: 'Interstellaire', description: '365 jours consécutifs', unlocked: streak >= 365 },
-    ];
+    const statsPourBadges = { totalSessions, maxScore, facileDone, facileTotal, moyenNb, streak };
+    const badges = BADGES.map((b) => ({ ...b, unlocked: estDebloque(b.id, statsPourBadges) }));
 
     res.json({
       global: (global as any[])[0],

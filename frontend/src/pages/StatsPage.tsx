@@ -52,6 +52,7 @@ const MILESTONES = [
 interface StatType { type_exercice: string; nb_sessions: number; score_moyen: number; meilleur_score: number; }
 interface Session  { id: number; score: number; date_session: string; titre: string; type_exercice: string; niveau: string; }
 interface Niveau   { nom: string; niveau: number; prevXP: number; nextXP: number | null; xpPct: number; }
+interface Badge    { id: string; emoji: string; titre: string; description: string; unlocked: boolean; }
 interface Stats {
 	global:      { total_sessions: number; score_global: number; meilleur_score: number };
 	parType:     StatType[];
@@ -59,7 +60,19 @@ interface Stats {
 	streak:      number;
 	xp:          number;
 	niveau:      Niveau;
+	badges:      Badge[];
 }
+
+// Couleur de lueur par badge, pour les médailles débloquées (.db-medal-circle,
+// --medal-glow). Les badges "série" ont déjà leur propre section (Paliers
+// de série, au-dessus) donc ils sont exclus de la grille de médailles.
+const MEDAL_COLOR: Record<string, { bg: string; glow: string }> = {
+	premier_pas:     { bg: "linear-gradient(145deg, #34D399, #059669)", glow: "rgba(16,185,129,0.4)" },
+	score_parfait:   { bg: "linear-gradient(145deg, #FBBF24, #D97706)", glow: "rgba(245,158,11,0.4)" },
+	dix_sessions:    { bg: "linear-gradient(145deg, #818CF8, #4F46E5)", glow: "rgba(99,102,241,0.4)" },
+	facile_maitrise: { bg: "linear-gradient(145deg, #FCD34D, #F59E0B)", glow: "rgba(245,158,11,0.4)" },
+	niveau_moyen:    { bg: "linear-gradient(145deg, #F472B6, #DB2777)", glow: "rgba(219,39,119,0.4)" },
+};
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -276,12 +289,47 @@ const StatsPage = () => {
 										} as React.CSSProperties : {}}>
 										<span className="sp2-ms-icon" aria-hidden="true">{m.icon}</span>
 										<span className="sp2-ms-days">{m.days}j</span>
-										<span className="sp2-ms-name">{m.label}</span>
+									<span className="sp2-ms-name">{m.label}</span>
 									</div>
 								);
 							})}
 						</div>
 					</section>
+
+					{/* Badges (hors paliers de série, déjà affichés dans leur propre section) */}
+					{stats!.badges?.filter(b => !b.id.startsWith("serie_")).length > 0 && (
+						<section className="sp2-section">
+							<div className="db-achieve-head">
+								<h2 className="sp2-label">Badges</h2>
+								<span className="db-achieve-count">
+									{stats!.badges.filter(b => !b.id.startsWith("serie_") && b.unlocked).length}
+									/{stats!.badges.filter(b => !b.id.startsWith("serie_")).length}
+								</span>
+							</div>
+							<div className="db-achieve-grid">
+								{stats!.badges
+									.filter(b => !b.id.startsWith("serie_"))
+									.map(b => {
+										const medal = MEDAL_COLOR[b.id];
+										return (
+											<div key={b.id} className={`db-medal-item${b.unlocked ? " db-medal-item--on" : " db-medal-item--off"}`}>
+												<div
+													className="db-medal-circle"
+													style={b.unlocked ? {
+														background: medal?.bg,
+														"--medal-glow": medal?.glow,
+													} as React.CSSProperties : {}}
+													title={b.description}
+												>
+													<span aria-hidden="true" style={{ fontSize: "1.5rem" }}>{b.emoji}</span>
+												</div>
+												<span className="db-medal-name">{b.titre}</span>
+											</div>
+										);
+									})}
+							</div>
+						</section>
+					)}
 
 					{/* Par type */}
 					{stats!.parType.length > 0 && (

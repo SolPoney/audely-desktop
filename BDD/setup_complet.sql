@@ -134,6 +134,19 @@ CREATE TABLE GainXP (
     REFERENCES Resultats(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Badges débloqués — voir backend/src/config/badges.ts et
+-- backend/src/services/badgeService.ts. Remplace le recalcul à chaque
+-- requête : seule une valeur stockée permet de détecter un badge
+-- *nouvellement* débloqué (pour la révélation sur l'écran de fin).
+CREATE TABLE BadgeObtenu (
+  id_utilisateur INT NOT NULL,
+  id_badge       VARCHAR(50) NOT NULL,
+  obtenu_le      DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id_utilisateur, id_badge),
+  CONSTRAINT FK_BadgeObtenu_Utilisateur FOREIGN KEY (id_utilisateur)
+    REFERENCES Utilisateur(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ── Catégories ──────────────────────────────────────────────────
 
 INSERT INTO Categorie (id, titre) VALUES

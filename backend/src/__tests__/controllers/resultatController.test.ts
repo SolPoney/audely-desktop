@@ -9,6 +9,9 @@ vi.mock('../../services/serieService.js', () => ({
 vi.mock('../../services/xpService.js', () => ({
   enregistrerGainXP: vi.fn(),
 }));
+vi.mock('../../services/badgeService.js', () => ({
+  verifierNouveaux: vi.fn(),
+}));
 vi.mock('../../controllers/queteController.js', () => ({
   updateRevision: vi.fn(),
 }));
@@ -17,11 +20,13 @@ import pool from '../../config/db.js';
 import { saveResultat } from '../../controllers/resultatController.js';
 import { mettreAJourSerie } from '../../services/serieService.js';
 import { enregistrerGainXP } from '../../services/xpService.js';
+import { verifierNouveaux } from '../../services/badgeService.js';
 import { updateRevision } from '../../controllers/queteController.js';
 
 const mockGetConnection = vi.mocked(pool.getConnection);
 const mockMettreAJourSerie = vi.mocked(mettreAJourSerie);
 const mockEnregistrerGainXP = vi.mocked(enregistrerGainXP);
+const mockVerifierNouveaux = vi.mocked(verifierNouveaux);
 const mockUpdateRevision = vi.mocked(updateRevision);
 
 const makeReq = (body: any, userId: number | undefined = 1) =>
@@ -66,6 +71,9 @@ describe('saveResultat', () => {
       nouveauRecord: true,
     });
     mockEnregistrerGainXP.mockResolvedValue({ montantBase: 20, bonus: 5, total: 25 });
+    mockVerifierNouveaux.mockResolvedValue([
+      { id: 'premier_pas', emoji: '🚀', titre: 'Premier pas', description: 'Complétez votre premier exercice' },
+    ]);
 
     const req = makeReq({ id_exercice: 5, score: 80 });
     const res = makeRes();
@@ -82,6 +90,7 @@ describe('saveResultat', () => {
     );
     expect(mockMettreAJourSerie).toHaveBeenCalledWith(connection, 1);
     expect(mockEnregistrerGainXP).toHaveBeenCalledWith(connection, 1, 99, 80, 'moyen');
+    expect(mockVerifierNouveaux).toHaveBeenCalledWith(connection, 1, 3);
     expect(connection.commit).toHaveBeenCalled();
     expect(connection.release).toHaveBeenCalled();
     expect(mockUpdateRevision).toHaveBeenCalledWith(1, 5, 80);
@@ -90,6 +99,7 @@ describe('saveResultat', () => {
       expect.objectContaining({
         serie: expect.objectContaining({ streakActuelle: 3 }),
         xp: expect.objectContaining({ total: 25 }),
+        badges: [expect.objectContaining({ id: 'premier_pas' })],
       }),
     );
   });

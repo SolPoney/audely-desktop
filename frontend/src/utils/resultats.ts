@@ -15,9 +15,17 @@ export interface GainXP {
 	total: number;
 }
 
+export interface BadgeDef {
+	id: string;
+	emoji: string;
+	titre: string;
+	description: string;
+}
+
 export interface ResultatEnregistre {
 	serie?: GainSerie;
 	xp?: GainXP;
+	badges?: BadgeDef[];
 }
 
 /**

@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { updateRevision } from './queteController.js';
 import { mettreAJourSerie } from '../services/serieService.js';
 import { enregistrerGainXP } from '../services/xpService.js';
+import { verifierNouveaux } from '../services/badgeService.js';
 
 /**
  * Save an exercise result and update the spaced-repetition schedule (FSRS).
@@ -40,6 +41,7 @@ export const saveResultat = async (req: Request, res: Response) => {
     const connection = await pool.getConnection();
     let resultatSerie;
     let resultatXP;
+    let nouveauxBadges;
     try {
       await connection.beginTransaction();
 
@@ -57,6 +59,7 @@ export const saveResultat = async (req: Request, res: Response) => {
 
       resultatSerie = await mettreAJourSerie(connection, userId);
       resultatXP = await enregistrerGainXP(connection, userId, idResultat, scoreNum, niveau);
+      nouveauxBadges = await verifierNouveaux(connection, userId, resultatSerie.streakActuelle);
 
       await connection.commit();
     } catch (err) {
@@ -70,7 +73,12 @@ export const saveResultat = async (req: Request, res: Response) => {
     // comme avant : un échec ici ne doit pas annuler le résultat déjà enregistré.
     await updateRevision(userId, exerciceId, scoreNum);
 
-    res.status(201).json({ message: 'Résultat enregistré', serie: resultatSerie, xp: resultatXP });
+    res.status(201).json({
+      message: 'Résultat enregistré',
+      serie: resultatSerie,
+      xp: resultatXP,
+      badges: nouveauxBadges,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erreur serveur' });

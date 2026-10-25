@@ -11,11 +11,6 @@ interface Props {
 	gain?: ResultatEnregistre | null;
 }
 
-// Mêmes paliers que les badges "série" de statsController.ts — dupliqués ici
-// car ce composant n'a accès qu'à la réponse de POST /api/resultats, pas à
-// la liste complète des badges (qui vient d'un autre appel, GET /api/stats).
-const PALIERS_SERIE = [3, 5, 7, 14, 31, 50, 100, 365];
-
 /* ── Config par pallier ── */
 const getTier = (score: number) => {
 	if (score >= 90) return {
@@ -153,7 +148,7 @@ const ResultScreen = ({ score, bonnes, total, onRejouer, gain }: Props) => {
 	// La série n'avance que pour le premier exercice du jour — les suivants
 	// ne doivent pas répéter "Série : X jours" à chaque fin d'exercice.
 	const serieAAvance = !!gain?.serie && gain.serie.streakActuelle !== gain.serie.streakAvant;
-	const nouveauPalier = serieAAvance && PALIERS_SERIE.includes(gain!.serie!.streakActuelle);
+	const nouveauxBadges = gain?.badges ?? [];
 
 	return (
 		<div className="rs-page">
@@ -203,8 +198,14 @@ const ResultScreen = ({ score, bonnes, total, onRejouer, gain }: Props) => {
 						)}
 					</div>
 				)}
-				{nouveauPalier && (
-					<p className="rs-palier" aria-live="polite">🎉 Nouveau palier de série débloqué !</p>
+				{nouveauxBadges.length > 0 && (
+					<div className="rs-badges" aria-live="polite">
+						{nouveauxBadges.map((b) => (
+							<p key={b.id} className="rs-palier">
+								{b.emoji}&nbsp;Badge débloqué&nbsp;: {b.titre}
+							</p>
+						))}
+					</div>
 				)}
 
 				{/* Étoiles */}
