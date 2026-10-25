@@ -5174,6 +5174,49 @@ body {
 .db-quete-bar { width: 72px; height: 6px; background: rgba(255,255,255,0.25); border-radius: 99px; overflow: hidden; }
 .db-quete-bar-fill { height: 100%; background: white; border-radius: 99px; transition: width 0.4s ease; }
 
+/* ── Bannière "Activer les rappels" ── */
+.db-rappel-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: var(--color-white);
+  border-radius: 16px;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 1px 3px rgba(15,23,42,0.05), 0 4px 16px rgba(15,23,42,0.07);
+}
+.db-rappel-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, #0D9488, #0F766E);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.db-rappel-texte { flex: 1; min-width: 0; }
+.db-rappel-titre { font-size: 0.875rem; font-weight: 700; color: var(--color-text); }
+.db-rappel-sous { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 1px; }
+.db-rappel-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 99px;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.db-rappel-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.db-rappel-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  flex-shrink: 0;
+  display: flex;
+}
+
 /* ══════════════════════════════════════════════
    QUÊTE DU JOUR — (réutilise pl-* du Parcours)
 ══════════════════════════════════════════════ */

@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useTheme } from "../hooks/useTheme";
 import {
 	Moon, Sun, LogOut, Headphones, Music, BarChart2,
-	Flame, Zap, Snowflake,
+	Flame, Zap, Snowflake, Bell, X,
 } from "lucide-react";
 import { API_URL } from "../config/api";
 import { getUser } from "../hooks/useAuth";
+import { estSupportePush, getAbonnementExistant, activerNotifications } from "../utils/push";
+
+const CLE_RAPPEL_MASQUE = "audely_push_masque";
 
 interface Niveau { nom: string; niveau: number; prevXP: number; nextXP: number | null; xpPct: number; }
 
@@ -24,6 +28,37 @@ const DashboardPage = () => {
 	const [queteNb, setQueteNb]      = useState(0);
 	const [queteTotal, setQueteTotal] = useState(3);
 	const [queteFaite, setQueteFaite] = useState(false);
+	const [proposerRappels, setProposerRappels] = useState(false);
+	const [activationEnCours, setActivationEnCours] = useState(false);
+
+	useEffect(() => {
+		if (!estSupportePush()) return;
+		if (Notification.permission === "denied") return;
+		if (localStorage.getItem(CLE_RAPPEL_MASQUE)) return;
+		getAbonnementExistant().then((abonnement) => {
+			if (!abonnement) setProposerRappels(true);
+		});
+	}, []);
+
+	const activerRappels = async () => {
+		const token = localStorage.getItem("token");
+		if (!token) return;
+		setActivationEnCours(true);
+		try {
+			await activerNotifications(API_URL, token);
+			toast.success("Rappels activés !");
+			setProposerRappels(false);
+		} catch (err: any) {
+			toast.error(err?.message ?? "Impossible d'activer les rappels.");
+		} finally {
+			setActivationEnCours(false);
+		}
+	};
+
+	const masquerPropositionRappels = () => {
+		localStorage.setItem(CLE_RAPPEL_MASQUE, "1");
+		setProposerRappels(false);
+	};
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -155,6 +190,39 @@ const DashboardPage = () => {
 
 					</div>
 				</div>
+
+				{/* ── Proposition d'activer les rappels ── */}
+				{proposerRappels && (
+					<div className="db-section">
+						<div className="db-section-inner">
+							<div className="db-rappel-banner">
+								<div className="db-rappel-icon" aria-hidden="true">
+									<Bell size={18} color="white" strokeWidth={2} />
+								</div>
+								<div className="db-rappel-texte">
+									<p className="db-rappel-titre">Activer les rappels</p>
+									<p className="db-rappel-sous">Un petit coup de pouce les jours où vous oubliez.</p>
+								</div>
+								<button
+									type="button"
+									className="db-rappel-btn"
+									onClick={activerRappels}
+									disabled={activationEnCours}
+								>
+									{activationEnCours ? "…" : "Activer"}
+								</button>
+								<button
+									type="button"
+									className="db-rappel-close"
+									onClick={masquerPropositionRappels}
+									aria-label="Masquer cette proposition"
+								>
+									<X size={16} strokeWidth={2.5} />
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 
 				{/* ── Quête du jour ── */}
 				<div className="db-section">

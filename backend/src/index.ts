@@ -11,6 +11,7 @@ import ttsRoutes from './routes/ttsRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
 import queteRoutes from './routes/queteRoutes.js'
 import utilisateurRoutes from './routes/utilisateurRoutes.js'
+import pushRoutes from './routes/pushRoutes.js'
 
 import { verifyToken } from './middlewares/authMiddleware.js';
 
@@ -59,6 +60,7 @@ app.use('/api', ttsRoutes)
 app.use('/api', statsRoutes)
 app.use('/api', queteRoutes)
 app.use('/api', utilisateurRoutes)
+app.use('/api', pushRoutes)
 
 app.get('/api/ping', (_req, res) => res.json({ ok: true }));
 
